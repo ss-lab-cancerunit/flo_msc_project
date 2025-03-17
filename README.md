@@ -1,1 +1,2 @@
-# flo_msc_project
+# Impact of chromatin landscape changes and consequential enhancer rewiring on transcriptomes underlying metastatic pancreatic carcinoma 
+#### This MSc will integrate and model multi-omic datasets related to enhancer activity and interactions in metastatic pancreatic cancer to enable identification of key nehancers, their transcriptional regulatorys and target genes and processes important in PDAC metastasis. 
