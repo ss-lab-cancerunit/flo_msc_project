@@ -1,0 +1,35 @@
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#This code enables the retrieval of .sra files from ren_et_al.2021 RNA-seq dataset using the HPC
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate hpcdemo environment
+source activate hpcdemo
+
+
+#create an array that only have the SRR numbers
+declare -a sra_array
+
+sra_array=(SRR11566126 SRR11566127 SRR11566128 SRR11566150 SRR11566151 SRR11566152 SRR11566174 SRR11566175 SRR11566177)
+
+#create a function to retrieve the fastq files
+function sra_retrieve() {
+        for item in "${sra_array[@]}"
+        do
+                prefetch $item -O $EPHEMERAL/rna_seq/rna_ren_20250312
+        done
+}
+
+#run the function
+sra_retrieve
+
+#deactivate conda
+conda deactivate
