@@ -17,3 +17,25 @@ fastqc -t 8 $EPHEMERAL/rna_seq/rna_ren_20250312/fastq/*.fastq -O $EPHEMERAL/rna_
 
 #deactivate conda
 conda deactivate
+
+#######################################################################################################################
+#code after running cutadapt to trim illumina adaptors
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#this code is for qc on fasta files
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#fastqc qc code
+fastqc -t 8 -o ~/rna_seq/seq_data/ren_et_al_2021/cutadapt_out/*fastq -O ~/rna_seq/seq_data/ren_et_al_2021/cutadapt_out/fastqc
+
+#deactivate conda
+conda deactivate
