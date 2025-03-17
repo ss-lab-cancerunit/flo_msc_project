@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#activate conda work environment
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate hpcdemo
+
+#while loop to retrieve the SRR accessions to sra_array (fastq default is split -3)
+while IFS=',' read -r first_col _; do
+fasterq-dump "$first_col" --outdir $EPHEMERAL/rna_seq/rna_ren_20250312/fastq
+done < ren_sra.csv
+
+conda deactivate
