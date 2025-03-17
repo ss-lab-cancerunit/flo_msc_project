@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=16:mem=64gb
+
+#this code enables trimming of illumina adaptor via cutadapt tool
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#for loop code for cutadapt; NEBNext Adaptor for Illumina: GATCGGAAGAGCACACGTCTGAAC TCCAGTCUACACTCTTTCCCTACACGACGCTCTTCCGAT
+function cutadapt_fun() {
+        for item in $HOME/rna_seq/seq_data/ren_et_al_2021/rna_ren_20250312/fastq/*;
+        do
+                #open files
+                #cat "$HOME/rna_seq/seq_data/ren_et_al_2021/rna_ren_20250312/fastq/*"
+                cutadapt -a GATCGGAAGAGCACACGTCTGAACTCCAGTCUACACTCTTTCCCTACACGACGCTCTTCCGAT -o $HOME/rna_seq/seq_data/ren_et_al_2021/cutadapt_out/output.fastq $item
+        done
+}
+
+cutadapt_fun
+
+conda deactivate
