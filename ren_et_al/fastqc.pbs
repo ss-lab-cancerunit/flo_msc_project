@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#this code is for QC on fasta files
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading and activating the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#fastqc code
+fastqc -t 8 $EPHEMERAL/rna_seq/rna_ren_20250312/fastq/*.fastq -O $EPHEMERAL/rna_seq/rna_ren_20250312/fastqc
+
+#deactivate conda
+conda deactivate
