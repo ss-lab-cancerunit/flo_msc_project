@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N fastq_retreival
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#this code is for performing multiqc on fastqc.html files
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#multiqc code:
+multiqc $EPHEMERAL/rna_seq/rna_ren_20250312/fastqc
+
+conda deactivate
