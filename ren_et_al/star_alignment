@@ -15,7 +15,6 @@ activate source hpcdemo
 csv_path=$HOME/rna_seq/seq_data/ren_et_al_2021/ren_sra.csv
 SRR=($(tail -n +2 "$csv_path" | cut -d ',' -f 1 ))
 
-#STAR while loop
 file_name_R1="${SRR[$PBS_ARRAY_INDEX]}_1.fastq"
 file_name_R2="${SRR[$PBS_ARRAY_INDEX]}_2.fastq"
 
