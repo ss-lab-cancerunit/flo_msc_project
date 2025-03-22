@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -N kallisto
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#make index
+kallisto index -i "$HOME/GENCODE_TRANSCRIPT_INDEX/gencode_v47.idx" "$HOME/GENCODE_TRANSCRIPT_INDEX/gencode.v47.transcripts.fa"
+
+conda deactivate
