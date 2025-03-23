@@ -25,7 +25,7 @@ outpath=$EPHEMERAL/rna_seq/Ren_BAM/
 ano_gtf_path=$HOME/GENCODE/basic_gene_annotation_PRI.gtf
 
 #STAR code - note, this should be run as one whole command, not one command per line!
-STAR --genomeDir $HOME/GENCODE --runThreadN 16 --sjdbGTFfile $ano_gtf_path --readFilesIn "$inpath/$file_name_R1" "$inpath/$file_name_R2" --quantMode GeneCounts 
+STAR --genomeDir $HOME/GENCODE_GENOME_INDEX --runThreadN 16 --sjdbGTFfile $ano_gtf_path --readFilesIn "$inpath/$file_name_R1" "$inpath/$file_name_R2" --quantMode GeneCounts 
 --twopassMode Basic --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix ${outpath}/"${SRR[$PBS_ARRAY_INDEX]}" --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within 
 --outSAMattributes Standard \
 
