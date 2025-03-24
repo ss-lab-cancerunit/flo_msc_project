@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N kallisto
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+#PBS -J 0-8
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+source activate hpcdemo
+
+#SRR names via csv file
+csv_path="$HOME/rna_seq/seq_data/ren_et_al_2021/ren_sra.csv"
+SRR=($(tail -n +2 "$csv_path" | cut -d ',' -f 1 ))
+
+file_name_R1="${SRR[$PBS_ARRAY_INDEX]}_1.fastq"
+file_name_R2="${SRR[$PBS_ARRAY_INDEX]}_2.fastq"
+
+#path to fastq files
+inpath="$HOME/rna_seq/seq_data/ren_et_al_2021/cutadapt_out"
+outpath="$EPHEMERAL/rna_seq/Ren_Kallisto/"
+genome_index="$HOME/GENCODE_TRANSCRIPT_INDEX/gencode_v47.idx"
+
+#code for Kallisto
+kallisto quant -i "$genome_index" -o "$outpath" -t 6 "$inpath/$file_name_R1" "$inpath/$file_name_R2"
+
+conda deactivate
