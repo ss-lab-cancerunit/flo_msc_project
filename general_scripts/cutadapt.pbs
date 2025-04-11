@@ -1,0 +1,41 @@
+#!/bin/bash
+#PBS -N CUTADAPT
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -J 0-39
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate environment
+source activate hpcdemo
+
+#retrieval of SRR names
+declare -a srr_array
+IFS=$'\n' read -d '' -r -a srr_array < <(tail -n +2 "$HOME/chip_seq/ren_et_al_2021/ren_sra_chip.csv" | cut -d ',' -f1)
+
+#navigate to fastq files
+input_1=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq/${srr_array[$PBS_ARRAY_INDEX]}_1.fastq
+output_1=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq_trimmed/${srr_array[$PBS_ARRAY_INDEX]}_1_trimmed.fastq
+
+input_2=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq/${srr_array[$PBS_ARRAY_INDEX]}_2.fastq
+output_2=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq_trimmed/${srr_array[$PBS_ARRAY_INDEX]}_2_trimmed.fastq
+
+#################################### REMOVAL OF N CONTENT #############################################################
+
+#first paired sequence
+cutadapt --max-n 0.1 -o $output_1 $input_1
+
+#second paired sequence
+cutadapt --max-n 0.1 -o $output_2 $input_2
+
+
+################################### REMOVAL OF ADAPTOR CONTAMINATION ##################################################
+#fasta file for the adaptors
+mapfile -t fastq < "dir/adaptor_seqs.fa"
+
+#paired sequences
+cutadapt -a ${fastq[1]} -A ${fastq[3]} -o $output_1 -p $output_2 $input_1 $input_2
