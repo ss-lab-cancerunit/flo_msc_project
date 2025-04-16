@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N bwa-mem2_align
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=32:mem=128gb
+#PBS -J 0-89
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#load and activate conda work environment
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate hpcdemo
+
+#SRR names via csv file
+csv_path="/rds/general/user/fno124/home/chip_seq/mcd_et_al_2017/SraRunTable_macdonald2017_chip.csv"
+SRR=($(tail -n +2 "$csv_path" | cut -d ',' -f 1 ))
+
+
+#paths to sequencing reads
+read1="$EPHEMERAL/chip_seq/mcd_et_al_2017/fastq_trimmed/${SRR[$PBS_ARRAY_INDEX]}_1_trimmed.fastq"
+read2="$EPHEMERAL/chip_seq/mcd_et_al_2017/fastq_trimmed/${SRR[$PBS_ARRAY_INDEX]}_2_trimmed.fastq"
+
+
+#path to blacklist .bed file
+blacklist="$HOME/BLACKLIST/hg38-blacklist.v2.bed"
+
+#output of bam files
+bam="$EPHEMERAL/chip_seq/mcd_et_al_2017/bam/${SRR[$PBS_ARRAY_INDEX]}_sorted.bam"
+
+#output of trimmed files
+bed_trimmed="$EPHEMERAL/chip_seq/mcd_et_al_2017/bed_trimmed"
+
+# bwa-mem2 alignment and pipe into a bam file
+bwa-mem2 mem -t 32 "$HOME/BWA-MEM2-INDEX/reference_index" $read1 $read2 | samtools sort -o $bam -
+
+#first convert BAM to BED file
+bedtools bamtobed -i "$bam" | bedtools subtract -a stdin -b "$blacklist" > "$bed_trimmed/${SRR[$PBS_ARRAY_INDEX]}.bed"
+
+conda deactivate
