@@ -13,9 +13,9 @@ eval "$(~/miniforge3/bin/conda shell.bash hook)"
 #activate environment
 source activate hpcdemo
 
-#retrieval of SRR names
-declare -a srr_array
-IFS=$'\n' read -d '' -r -a srr_array < <(tail -n +2 "$HOME/chip_seq/ren_et_al_2021/ren_sra_chip.csv" | cut -d ',' -f1)
+#retrieval of SRR names via csv file
+csv="$HOME/chip_seq/mcd_et_al_2017/SraRunTable_macdonald2017_chip.csv"
+srr_array=($(tail -n +2 "$csv" | cut -d ',' -f 1))
 
 #navigate to fastq files
 input_1=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq/${srr_array[$PBS_ARRAY_INDEX]}_1.fastq
@@ -26,11 +26,8 @@ output_2=$EPHEMERAL/chip_seq/ren_et_al_2021/fastq_trimmed/${srr_array[$PBS_ARRAY
 
 #################################### REMOVAL OF N CONTENT #############################################################
 
-#first paired sequence
-cutadapt --max-n 0.1 -o $output_1 $input_1
+cutadapt --max-n 0.0005 --pair-filter=any -o $output_1 -p  $output_2 $input_1 $input_2
 
-#second paired sequence
-cutadapt --max-n 0.1 -o $output_2 $input_2
 
 
 ################################### REMOVAL OF ADAPTOR CONTAMINATION ##################################################
