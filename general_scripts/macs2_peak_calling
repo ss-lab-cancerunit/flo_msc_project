@@ -43,14 +43,11 @@ echo "CAPAN-1 samples"
 while IFS=',' read -r field1 field2 field3 field4 _; do 
         if [ "$field2" == "Capan-1" ]; then
                 if [ "$field4" == "broad" ]; then
-                        echo "${field1} is a broad peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" 
-                        --to-large --keep-dup auto --broad -g 2913022398 --pvalue 0.05 
-                        --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline 
-                        --outdir $output_path
+                        echo "${field1} is a BROAD peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
                 else
                         echo "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}"  --name "${field1}" --trackline --bdg --outdir $output_path
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}"  --name "${field1}" --trackline --bdg --outdir $output_path
                 fi
         fi
 done < "$sheet"
@@ -63,10 +60,10 @@ while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders fo
         if [ "$field2" == "HPNE" ]; then
                 if [ "$field4" == "broad" ]; then
                         echo "${field1} is a BROAD peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
                 else
                         echo "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
                 fi
         fi
 done < "$sheet"
@@ -79,10 +76,10 @@ while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders fo
         if [ "$field2" == "PANC-1" ]; then
                 if [ "$field4" == "broad" ]; then
                         "${field1} is a BROAD peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
                 else
                         "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
                 fi
         fi
 done < "$sheet"
