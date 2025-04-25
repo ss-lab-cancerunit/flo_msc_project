@@ -1,0 +1,93 @@
+#!/bin/bash
+#PBS -N macs2_peak_calling
+#PBS -l walltime=48:00:00
+#PBS -l select=1:ncpus=64:mem=128gb
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate hpcdemo
+
+#load most recent version of python
+module load python/3.5.4
+
+#confirm python version
+python --version
+
+#sample sheet
+sheet="$HOME/chip_seq/ren_et_al_2021/ren_sra_chip_sample_sheet.csv"
+
+#control input files:
+capan_input="SRR11566129"
+hpne_input="SRR11566178"
+panc_input="SRR11566153"
+
+#path to bampe files
+bam="$EPHEMERAL/chip_seq/ren_et_al_2021/bam_sorted_g"
+
+#outpath
+output_path="$EPHEMERAL/chip_seq/ren_et_al_2021/MACS2_results_2"
+mkdir -p $output_path
+
+
+###### MACS2 code ######
+
+echo "CAPAN-1 samples"
+
+#if statements to retrieve the capan samples
+while IFS=',' read -r field1 field2 field3 field4 _; do 
+        if [ "$field2" == "Capan-1" ]; then
+                if [ "$field4" == "broad" ]; then
+                        echo "${field1} is a broad peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" 
+                        --to-large --keep-dup auto --broad -g 2913022398 --pvalue 0.05 
+                        --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline 
+                        --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}"  --name "${field1}" --trackline --bdg --outdir $output_path
+                fi
+        fi
+done < "$sheet"
+
+
+echo "HPNE samples"
+
+#if statements to retrieve the hpne samples
+while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders for the other fields
+        if [ "$field2" == "HPNE" ]; then
+                if [ "$field4" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+done < "$sheet"
+
+
+echo "PANC-1 samples"
+
+#if statements for PANC-1 samples
+while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders for the other fields
+        if [ "$field2" == "PANC-1" ]; then
+                if [ "$field4" == "broad" ]; then
+                        "${field1} is a BROAD peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        "${field1} is a NARROW peak"
+                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+done < "$sheet"
+
+echo "finish"
+
+
+conda deactivate
