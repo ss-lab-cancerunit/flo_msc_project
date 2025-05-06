@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N macs2_peak_calling
 #PBS -l walltime=48:00:00
-#PBS -l select=1:ncpus=64:mem=128gb
+#PBS -l select=1:ncpus=128:mem=256gb
 
 
 #change work directory to submission directory
@@ -20,71 +20,109 @@ module load python/3.5.4
 python --version
 
 #sample sheet
-sheet="$HOME/chip_seq/ren_et_al_2021/ren_sra_chip_sample_sheet.csv"
+sheet="$HOME/chip_seq/mcd_et_al_2017/mcd_chip_sample_sheet_MACS.csv"
 
 #control input files:
-capan_input="SRR11566129"
-hpne_input="SRR11566178"
-panc_input="SRR11566153"
+a13_pri_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a13_pri_input_filtered.bam"
+a13_lg_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a13_lg_input_filtered.bam"
+hdpe_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/hpde_input_filtered.bam"
+a38_lg_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a38_lg_70.bam"
+a38_per_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a38_per_100.bam"
 
 #path to bampe files
-bam="$EPHEMERAL/chip_seq/ren_et_al_2021/bam_sorted_g"
+bam="$EPHEMERAL/chip_seq/mcd_et_al_2017/bam_sorted_g"
 
 #outpath
-output_path="$EPHEMERAL/chip_seq/ren_et_al_2021/MACS2_results_2"
+output_path="$EPHEMERAL/chip_seq/mcd_et_al_2017/MACS2_results_1"
 mkdir -p $output_path
 
 
 ###### MACS2 code ######
 
-echo "CAPAN-1 samples"
+echo "A13 PRIMARY SAMPLES"
 
 #if statements to retrieve the capan samples
-while IFS=',' read -r field1 field2 field3 field4 _; do 
-        if [ "$field2" == "Capan-1" ]; then
-                if [ "$field4" == "broad" ]; then
-                        echo "${field1} is a BROAD peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
-                else
-                        echo "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${capan_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}"  --name "${field1}" --trackline --bdg --outdir $output_path
+while IFS=',' read -r field1 field2 field3 _ _; do
+        if [ "$field3" != "n/a" ]; then
+                if [ "$field2" == "primary tumor" ]; then
+                        if [ "$field3" == "broad" ]; then
+                                echo "${field1} is a BROAD peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_pri_input}" --to-large --keep-dup all --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        else
+                                echo "${field1} is a NARROW peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_pri_input}" --to-large --keep-dup all --nolambda -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --trackline --bdg --outdir $output_path
+                        fi
                 fi
         fi
 done < "$sheet"
 
 
-echo "HPNE samples"
+echo "A13 LUNG SAMPLES"
 
 #if statements to retrieve the hpne samples
-while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders for the other fields
-        if [ "$field2" == "HPNE" ]; then
-                if [ "$field4" == "broad" ]; then
-                        echo "${field1} is a BROAD peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
-                else
-                        echo "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${hpne_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+while IFS=',' read -r field1 field2 field3 _ _; do #_ _ are placeholders for the other fields
+        if [ "$field3" != "n/a" ]; then
+                if [ "$field2" == "lung metastasis" ]; then
+                        if [ "$field3" == "broad" ]; then
+                                echo "${field1} is a BROAD peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_lg_input}" --to-large --keep-dup all --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        else
+                                echo "${field1} is a NARROW peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_lg_input}" --to-large --keep-dup all --nolambda -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        fi
                 fi
         fi
 done < "$sheet"
 
 
-echo "PANC-1 samples"
+echo "HDPE SAMPLES"
 
-#if statements for PANC-1 samples
-while IFS=',' read -r field1 field2 field3 field4 _; do #_ _ are placeholders for the other fields
-        if [ "$field2" == "PANC-1" ]; then
-                if [ "$field4" == "broad" ]; then
-                        "${field1} is a BROAD peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --keep-dup auto --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
-                else
-                        "${field1} is a NARROW peak"
-                        macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "$bam/${panc_input}_filtered.bam" --to-large --keep-dup auto --nolambda -g 2913022398 --pvalue 0.05 --nomodel --extsize "${field3}" --name "${field1}" --bdg --trackline --outdir $output_path
+#if statements for HDPE
+while IFS=',' read -r field1 field2 field3 _ _; do #_ _ are placeholders for the other fields
+        if [ "$field3" != "n/a" ]; then
+                if [ "$field2" == "HPDE" ]; then
+                        if [ "$field3" == "broad" ]; then
+                                echo "${field1} is a BROAD peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${hdpe_input}" --to-large --keep-dup all --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        else
+                                echo "${field1} is a NARROW peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${hdpe_input}" --to-large --keep-dup all --nolambda -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        fi
                 fi
         fi
 done < "$sheet"
+
+
+echo "A38 LUNG SAMPLES"
+while IFS=',' read -r field1 field2 field3 _ _; do #_ _ are placeholders for the other fields
+        if [ "$field3" != "n/a" ]; then
+                if [ "$field2" == "70% (A38-Lg)" ]; then
+                        if [ "$field3" == "broad" ]; then
+                                echo "${field1} is a BROAD peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_lg_input}" --to-large --keep-dup all --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        else
+                                echo "${field1} is a NARROW peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_lg_input}" --to-large --keep-dup all --nolambda -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                       fi
+                fi
+        fi
+done < "$sheet"
+
+
+echo "A38 PER SAMPLES"
+while IFS=',' read -r field1 field2 field3 _ _; do #_ _ are placeholders for the other fields
+        if [ "$field3" != "n/a" ]; then
+                if [ "$field2" == "100% (A38-Per)" ]; then
+                        if [ "$field3" == "broad" ]; then
+                                "${field1} is a BROAD peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_per_input}" --to-large --keep-dup all --nolambda --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        else
+                                "${field1} is a NARROW peak"
+                                macs2 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_per_input}" --to-large --keep-dup all --nolambda -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                        fi
+                fi
+        fi
+done < "$sheet"
+
 
 echo "finish"
-
-
-conda deactivate
