@@ -53,16 +53,16 @@ if [ "$field4" != "n/a" ]; then
                 epic2 --treatment "$bam/${field1}_filtered.bam" --control "$input/${pri_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
         elif [ "$field2" == "lung metastasis" ]; then
                 echo "$field1 is lung metastasis"
-                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$bam/${a13_lg_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
+                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$input/${a13_lg_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
         elif [ "$field2" == "HPDE" ]; then
                 echo "$field1 is HPDE"
-                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$bam/${hpde_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
+                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$input/${hpde_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
         elif [ "$field2" == "100% (A38-Per)" ]; then
                 echo "$field1 is A38 Peritoneum metastasis"
-                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$bam/${a38_per_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
+                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$input/${a38_per_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
         else
                 echo "$field1 is A38 Lung metastasis"
-                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$bam/${a38_lg_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
+                epic2 --treatment "$bam/${field1}_filtered.bam" --control "$input/${a38_lg_input}_filtered.bam" --guess-bampe --effective-genome-fraction $egs --chromsizes $chrom_sizes --output "$output_path/$field1.bed"
         fi
 
 fi
