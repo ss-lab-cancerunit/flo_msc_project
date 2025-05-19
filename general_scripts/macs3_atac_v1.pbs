@@ -1,0 +1,32 @@
+#!bin/bash
+#PBS -N macs3_atac_peak_calling
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=64:mem=256gb
+#PBS -J 0-6
+
+
+#path to csv file
+sheet="$HOME/atac_seq/ren_et_al_2021/ren_atac_sheet.csv"
+
+#sample paths:
+input="$EPHEMERAL/atac_seq/ren_et_al_2021/sorted_trimmed_bam"
+
+output="$EPHEMERAL/atac_seq/ren_et_al_2021/macs3_hmmratac"
+mkdir -p $output
+
+
+# Extract the current sample from the sheet using PBS_ARRAY_INDEX
+sample=$(sed -n "${PBS_ARRAY_INDEX}p" "$sheet")
+
+
+# Parse the sample line into fields
+IFS=',' read -r field1 field2 <<< "$sample"
+
+
+#hmmratac code
+echo "PROCESSING ${field1}"
+macs3 hmmratac -i "$input/${field1}_ts.bam" -f BAMPE -n "${field1}" --outdir "$output"
+
+
+#deactivate conda
+conda deactivate
