@@ -1,0 +1,135 @@
+#!/bin/bash
+#PBS -N macs3_peak_calling
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=64:mem=256gb
+#PBS -J 0-89
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate hpcdemo
+
+#load most recent version of python
+module load python/3.5.4
+
+#confirm python version
+python --version
+
+#sample sheet
+sheet="$HOME/chip_seq/mcd_et_al_2017/mcd_chip_sample_sheet_MACS.csv"
+
+#control input files:
+a13_pri_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a13_pri_input_filtered.bam"
+a13_lg_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a13_lg_input_filtered.bam"
+hdpe_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/hpde_input_filtered.bam"
+a38_lg_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a38_lg_70.bam"
+a38_per_input="$EPHEMERAL/chip_seq/mcd_et_al_2017/combined_inputs/a38_per_100.bam"
+
+#path to bampe files
+bam="$EPHEMERAL/chip_seq/mcd_et_al_2017/bam_sorted_g"
+
+#outpath
+output_path="$EPHEMERAL/chip_seq/mcd_et_al_2017/MACS3_results_4"
+mkdir -p $output_path
+
+
+# Extract the current sample from the sheet using PBS_ARRAY_INDEX
+sample=$(sed -n "${PBS_ARRAY_INDEX}p" "$sheet")
+
+# Parse the sample line into fields
+IFS=',' read -r field1 field2 field3 _ _ <<< "$sample"
+
+
+###### MACS3 code ######
+
+echo "A13 PRIMARY SAMPLES"
+
+#if statement for primary tumour
+if [ "$field3" != "n/a" ]; then
+        if [ "$field2" == "primary tumor" ]; then
+                if [ "$field3" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_pri_input}" --to-large --keep-dup all --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_pri_input}" --to-large --keep-dup all -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --trackline --bdg --outdir $output_path
+                fi
+        fi
+fi
+
+
+
+echo "A13 LUNG SAMPLES"
+
+#if statements to retrieve the lung samples
+if [ "$field3" != "n/a" ]; then
+        if [ "$field2" == "lung metastasis" ]; then
+                if [ "$field3" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_lg_input}" --to-large --keep-dup all --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a13_lg_input}" --to-large --keep-dup all -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+fi
+
+
+
+echo "HDPE SAMPLES"
+
+#if statements for HDPE samples
+if [ "$field3" != "n/a" ]; then
+        if [ "$field2" == "HPDE" ]; then
+                if [ "$field3" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${hdpe_input}" --to-large --keep-dup all --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${hdpe_input}" --to-large --keep-dup all -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+fi
+
+
+echo "A38 LUNG SAMPLES"
+#if statements for lung samples
+if [ "$field3" != "n/a" ]; then
+        if [ "$field2" == "70% (A38-Lg)" ]; then
+                if [ "$field3" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_lg_input}" --to-large --keep-dup all --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_lg_input}" --to-large --keep-dup all -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+fi
+
+
+
+echo "A38 PER SAMPLES"
+#if statement for peri samples
+if [ "$field3" != "n/a" ]; then
+        if [ "$field2" == "100% (A38-Per)" ]; then
+                if [ "$field3" == "broad" ]; then
+                        echo "${field1} is a BROAD peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_per_input}" --to-large --keep-dup all --broad -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                else
+                        echo "${field1} is a NARROW peak"
+                        macs3 callpeak -f BAMPE -t "$bam/${field1}_filtered.bam" -c "${a38_per_input}" --to-large --keep-dup all -g 2913022398 --pvalue 0.05 --nomodel --name "${field1}" --bdg --trackline --outdir $output_path
+                fi
+        fi
+fi
+
+
+
+echo "finish"
+
+
+
+conda deactivate
