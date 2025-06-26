@@ -1,0 +1,448 @@
+---
+title: "ren_featureCounts"
+author: "f.obote"
+date: "2025-03-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+Install required packages
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+# Bioconductor packages
+BiocManager::install("DESeq2")
+BiocManager::install("AnnotationDbi")
+BiocManager::install("org.Hs.eg.db")
+BiocManager::install("EnsDb.Hsapiens.v86")
+BiocManager::install("apeglm")
+BiocManager::install("biomaRt")
+BiocManager::install("Rsubread")
+
+# CRAN packages
+install.packages("ggrepel")
+install.packages("RColorBrewer")
+install.packages("pheatmap")
+install.packages("magick")
+install.packages("stringr")
+
+#install devtools
+devtools::install_github("r-lib/devtools")
+#install.packages("ashr")
+
+
+
+```
+
+Load required packages:
+```{r}
+library("tidyverse")
+library("dplyr")
+library(Rsubread)
+library(DESeq2)
+library(apeglm)
+library(EnsDb.Hsapiens.v86)
+library(stringr)
+#library(devtools)
+#library(ashr)
+#library("IHW")
+library(biomaRt)
+
+```
+
+Load RData file
+```{r}
+#load RData featureCounts file
+load("C:/Users/flore/rsync_files/ren_featureCounts.RData")
+```
+
+open ren data file
+```{r}
+#open csv file
+ren_csv <- read.csv("C:/Users/flore/OneDrive/Documents/Applied Genomics MSc/Research Project/datasets_for_use/sra_metadata/ren_sra.csv")
+```
+
+
+Generate count matrix for DESeq2
+```{r ren_count_matrix}
+#view the list names
+names(Ren_featureCounts)
+
+#make dataframe
+count_df <- as.data.frame(Ren_featureCounts$counts)
+colnames(count_df) <- ren_csv$SRR
+
+```
+
+
+Generate sample metadata table for DESeq2
+```{r ren_sample_info}
+
+#creating the metadata dataframe
+sample_info <- as.data.frame(ren_csv$Center.Name, row.names = ren_csv$SRR)
+
+#changing column names
+colnames(sample_info) <- c("cell_line")
+
+#set factors
+factor(sample_info$cell_line)
+```
+
+
+Check the rownames and colnames match
+```{r}
+#check that the rownames and colnames match
+all(rownames(sample_info) == colnames(count_df))
+
+```
+##Creating DESeq objects
+```{r}
+#create a DESeq object
+dds <- DESeqDataSetFromMatrix(countData = count_df,
+                                  colData = sample_info,
+                                  design = ~cell_line)
+dds
+
+```
+##set the reference level to PANC-1
+```{r}
+dds$cell_line <- relevel(dds$cell_line, ref = "HPNE")
+
+```
+
+Pre-filter
+```{r}
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >=10) >= smallestGroupSize
+dds <- dds[keep,]
+```
+
+normalisation of raw gene counts to compensate for variable sequencing depth between samples
+```{r}
+#normalise raw counts using median-of-ratios method
+dds <- estimateSizeFactors(dds)
+
+#view normalisation size factors
+sizeFactors(dds)
+
+
+## GSEA FORMATTING ##
+#make into DF for GSEA
+normalised_counts <- counts(dds, normalized=TRUE) #counts() function in DESeq2 is a way to access the raw counts and normalised counts from a DESeq2DataSet object
+
+sample_names <- colnames(normalised_counts)
+
+ren_count_df <- data.frame(geneID = normalised_counts)
+colnames(ren_count_df) <- sample_names
+
+ren_count_df <- ren_count_df %>% 
+  mutate(short_gene_id = substr(rownames(ren_count_df), 1,15)) 
+
+#create data frame with gene symbols
+x <- anno_convert(ren_count_df)
+
+#merge the data frames
+ren_count_df <- left_join(ren_count_df, x, c("short_gene_id" = "GENEID")) %>% 
+  na.omit(ren_count_df)
+View(ren_count_df)
+
+#GSEA dataframe with correct gene symbols
+ren_gsea <- data.frame(SYMBOL = ren_count_df$SYMBOL, SRR11566126 = ren_count_df$SRR11566126, SRR11566127 = ren_count_df$SRR11566127, SRR11566128=ren_count_df$SRR11566128, SRR11566150=ren_count_df$SRR11566150, SRR11566151=ren_count_df$SRR11566151, SRR11566152=ren_count_df$SRR11566152, SRR11566174=ren_count_df$SRR11566174, SRR11566175=ren_count_df$SRR11566175,
+                       SRR11566177=ren_count_df$SRR11566177)
+View(ren_gsea)
+
+#save GSEA file then will convert it to .txt file for compatible GSEA format
+write.csv(ren_gsea, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/GSEA/ren_gsea.gct")
+
+
+```
+
+##Differential Expression Analysis
+```{r}
+#DEA line of code
+dds <- DESeq(dds)
+
+#readRDS file
+saveRDS(dds, file= "C:/Users/flore/rsync_files/dds.RData")
+
+#open dds.RData
+dds <- readRDS("C:/Users/flore/rsync_files/dds.RData")
+```
+
+
+##Extraction of results using results() function
+```{r}
+#extract results Capan-1 vs PANC-1
+contrast=c("cell_line","Capan-1","PANC-1")
+res <- results(dds, contrast=contrast, alpha=0.01, lfcThreshold=1)
+summary(res)
+
+#extracting results Capan-1 vs HPNE
+contrast_1=c("cell_line", "Capan-1", "HPNE")
+res_1 <- results(dds, contrast=contrast_1, alpha=0.01, lfcThreshold = 1)
+summary(res_1)
+
+#extracting results PANC-1 vs HPNE
+contrast_2=c("cell_line", "PANC-1", "HPNE")
+res_2 <- results(dds, contrast=contrast_2, alpha=0.01, lfcThreshold = 1)
+summary(res_2)
+View(res_2)
+```
+
+
+##Analysis Capan vs PANC-1
+```{r}
+#convert res to a dataframe to tibble: Capan vs PANC-1
+res_df <- data.frame(res)  %>% 
+  na.omit(res_df) %>% 
+  rownames_to_column(var="gene") %>% 
+  mutate(short_gene_id = substr(gene, 1,15)) %>% 
+  as_tibble()
+
+#save dataframe
+write.csv(res_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/capan_vs_panc/overview_DEGs.csv")
+
+
+#Benjamini-Hochberg procedure to get the q-value
+get_bh_threshold(res_df$pvalue, alpha=0.05, mtests=nrow(res_df))
+
+#downregulated DEGs
+downreg_df <- res_df %>% 
+  dplyr::filter(res_df$padj < 0.01 & res_df$log2FoldChange <= -1)
+write.csv(downreg_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/ren_downreg.csv")
+
+#upregulated DEGs
+upreg_df <- res_df %>% 
+  dplyr::filter(res_df$padj < 0.01 & res_df$log2FoldChange >= 1)
+write.csv(upreg_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/ren_upreg.csv")
+
+
+
+```
+
+##Analysis: Capan-1 vs HPNE
+```{r}
+#turn data to a tibble
+res_df1 <- data.frame(res_1)  %>% 
+  na.omit(res_df1) %>% 
+  rownames_to_column(var="gene") %>% 
+  mutate(short_gene_id = substr(gene, 1,15)) %>% 
+  as_tibble()
+
+#Benjamini-Hochberg procedure to get the q-value
+get_bh_threshold(res_df1$pvalue, alpha=0.05, mtests=nrow(res_df1))
+
+#overview DEGs
+write.csv(res_df1, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/capan_vs_hpne/ren_overview_cap_v_hp.csv")
+
+#downregulated DEGs
+downreg_df1 <- res_df1 %>% 
+  dplyr::filter(res_df1$padj < 0.01 & res_df1$log2FoldChange <= -1)
+#write.csv(downreg_df1, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/ren_downreg_capan_vs_hpne.csv")
+
+
+#upregulated DEGs
+upreg_df1 <- res_df1 %>% 
+  dplyr::filter(res_df1$padj < 0.01 & res_df1$log2FoldChange >= 1)
+#write.csv(upreg_df1, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/ren_upreg_capan_vs_hpne.csv")
+
+
+```
+
+##Analysis: PANC-1 vs HPNE
+```{r}
+#turn data to a tibble
+res_df2 <- data.frame(res_2)  %>% 
+  na.omit(res_df2) %>% 
+  rownames_to_column(var="gene") %>% 
+  mutate(short_gene_id = substr(gene, 1,15)) %>% 
+  as_tibble()
+
+write.csv(res_df2, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/panc_vs_hpne/panc_v_hp_overview.csv")
+
+#Benjamini-Hochberg procedure to get the q-value
+get_bh_threshold(res_df2$pvalue, alpha=0.05, mtests=nrow(res_df2))
+
+#downregulated DEGs
+downreg_df2 <- res_df2 %>% 
+  dplyr::filter(res_df2$padj < 0.005 & res_df2$log2FoldChange <= -1)
+#write.csv(downreg_df2, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/panc_vs_hpne/ren_downreg_panc_vs_hpne.csv")
+
+
+#upregulated DEGs
+upreg_df2 <- res_df2 %>% 
+  dplyr::filter(res_df2$padj < 0.005 & res_df2$log2FoldChange >= 1)
+#write.csv(upreg_df2, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/panc_vs_hpne/ren_upreg_panc_vs_hpne.csv")
+
+```
+#Use Biomart to retrieve other
+```{r}
+#list of BioMart services Ensembl is providing
+#identification of database required -> want to use biomart = "genes"
+listEnsembl()
+
+#search for the dataset (GRCh38.p14)
+datasets <- listDatasets(ensembl)
+searchDatasets(mart=ensembl, pattern="hsapiens")
+
+#update biomart to use required dataset
+ensembl <- useEnsembl(dataset="hsapiens_gene_ensembl", biomart = "genes")
+
+#finding filters
+listFilters(ensembl)
+
+#finding attributes - want ensembl_gene_id
+listAttributes(ensembl)
+
+#getBM() query
+getBM(attributes=)
+
+```
+
+
+MAplot of the results
+```{r}
+resultsNames(dds)
+res_shrunk <- lfcShrink(dds, coef="cell_line_Capan.1_vs_PANC.1", type="apeglm")
+plotMA(res, ylim = c(-15,15))
+
+```
+
+
+##Annotating results with gene symbols for upregulated dataframe. 
+ - keys is a vector of IDs that you want to query the annotation database for.
+ -keytype is the type of identifier used to access data within an annotation database i.e., gene symbols, Ensembl IDs, or UniProt IDs.
+```{r}
+#Capan-1 vs PANC-1
+
+#return the Ensembl IDs for a set of genes
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = upreg_df$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+
+# Join the AnnotationHub dataframe with the results 
+upreg_df <- left_join(upreg_df, annotations_ensdb, by=c("short_gene_id"="GENEID"))
+
+#save results
+write.csv(upreg_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/upreg_annotation_capan_vs_panc-1.csv", row.names=FALSE)
+
+
+
+#Capan-1 vs HPNE
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = upreg_df1$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+
+# Join the AnnotationHub dataframe with the results 
+upreg_df1 <- left_join(upreg_df1, annotations_ensdb, by=c("short_gene_id"="GENEID"))
+
+#save results
+write.csv(upreg_df1, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/upreg_annotation_capan_vs_hpne.csv", row.names=FALSE)
+
+
+
+#PANC-1 vs HPNE
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = upreg_df2$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+
+# Join the AnnotationHub dataframe with the results 
+upreg_df2 <- left_join(upreg_df2, annotations_ensdb, by=c("short_gene_id"="GENEID"))
+
+#save results
+write.csv(upreg_df2, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/upreg_annotation_panc_vs_hpne.csv", row.names=FALSE)
+
+
+```
+
+Annotating results with gene symbols for downregulated dataframe.
+```{r}
+#labelling downregulated df with geneID
+downregulated$geneID <- rownames(downregulated) 
+downregulated <-downregulated %>% 
+  relocate(geneID, .before = baseMean)
+
+#extract first 15 char of ENSG ID:
+for(i in seq_along(downregulated$geneID)) {
+  downregulated$geneID[i] <- substr(downregulated$geneID[i], 1, 15)
+}
+
+#return the Ensembl IDs for a set of genes
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = downregulated$geneID,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+
+# Join the AnnotationHub dataframe with the results 
+downregulated <- left_join(downregulated, annotations_ensdb, by=c("geneID"="GENEID"))
+
+#save results
+write.csv(downregulated, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/downregulated_annotation.csv", row.names=FALSE)
+```
+
+
+Save results:
+```{r}
+
+write.csv(res_sig, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/deseq2_res.csv", row.names=FALSE, col.names=TRUE)
+```
+
+
+
+
+##Quality Checks of DESeq2
+```{r}
+#plot dispersion
+plotDispEsts(dds)
+
+#check the distribution of LFCs
+hist(res$log2FoldChange, main="Distribution of Log2 Fold Changes", 
+     xlab="Log2 Fold Change", col="lightblue", breaks=50)
+
+```
+
+Quality Control: Principal Component Analysis
+```{r}
+# Transform normalised counts for visualisation and quality control
+rld <- rlog(dds, blind = TRUE)
+
+#perform PCA and store results in a new object
+pcaData <- plotPCA(rld, intgroup = "cell_line", returnData =TRUE)
+
+#plot the PCA using geom_point
+pca_plot <- ggplot(pcaData, aes(x = PC1, y = PC2, colour = cancer_type, shape = cancer_type)) +
+  geom_point(size = 5) +
+  theme (axis.title = element_text(size=20)) +
+  theme_bw() +
+  theme(aspect.ratio = 1) + 
+  scale_colour_manual(values = c("primary" = "skyblue", "metastatic"="pink", "normal"="lightgreen"))
+  
+
+pca_plot
+
+```
+
+
+
+
+
+
+
+
+
+
+
