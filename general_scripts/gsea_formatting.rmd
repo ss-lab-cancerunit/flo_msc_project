@@ -1,0 +1,34 @@
+
+#this markdown file shows the code used to format files for GSEA
+
+```{r}
+## GSEA FORMATTING ##
+#make into DF for GSEA
+normalised_counts <- counts(dds, normalized=TRUE) #counts() function in DESeq2 is a way to access the raw counts and normalised counts from a DESeq2DataSet object
+
+sample_names <- colnames(normalised_counts)
+
+ren_count_df <- data.frame(geneID = normalised_counts)
+colnames(ren_count_df) <- sample_names
+
+ren_count_df <- ren_count_df %>% 
+  mutate(short_gene_id = substr(rownames(ren_count_df), 1,15)) 
+
+#create data frame with gene symbols
+x <- anno_convert(ren_count_df)
+
+#merge the data frames
+ren_count_df <- left_join(ren_count_df, x, c("short_gene_id" = "GENEID")) %>% 
+  na.omit(ren_count_df)
+View(ren_count_df)
+
+#GSEA dataframe with correct gene symbols
+ren_gsea <- data.frame(SYMBOL = ren_count_df$SYMBOL, SRR11566126 = ren_count_df$SRR11566126, SRR11566127 = ren_count_df$SRR11566127, SRR11566128=ren_count_df$SRR11566128, SRR11566150=ren_count_df$SRR11566150, SRR11566151=ren_count_df$SRR11566151, SRR11566152=ren_count_df$SRR11566152, SRR11566174=ren_count_df$SRR11566174, SRR11566175=ren_count_df$SRR11566175,
+                       SRR11566177=ren_count_df$SRR11566177)
+View(ren_gsea)
+
+#save GSEA file then will convert it to .txt file for compatible GSEA format
+write.csv(ren_gsea, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/GSEA/ren_gsea.gct")
+
+
+```
