@@ -1,0 +1,68 @@
+#!/bin/bash
+#PBS -N blacklist_and_conversion
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=64:mem=128gb
+#PBS -J 0-38
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#load and activate conda work environment
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+conda activate hpcdemo
+
+## DATASET NAME ##
+name="ren_et_al_2021"
+
+
+## SRR NAMES ##
+
+#SRR names via csv file
+csv_path="$HOME/chip_seq/ren_et_al_2021/ren_sra_chip.csv"
+srr=($(tail -n +2 "$csv_path" | cut -d ',' -f 1 ))
+
+
+
+## FILE PATHS ##
+
+#location to the .bam
+bam="$EPHEMERAL/chip_seq/ren_et_al_2021/bam_files"
+
+#output of files
+bam_sorted_by_name="$EPHEMERAL/chip_seq/$name/bam_sorted"
+bam_filtered="$EPHEMERAL/chip_seq/$name/bam_filtered"
+bam_sorted_by_gen="$EPHEMERAL/chip_seq/ren_et_al_2021/bam_sorted_g"
+
+bedpe="$EPHEMERAL/chip_seq/$name/bedpe"
+bedpe_trimmed_sorted="$EPHEMERAL/chip_seq/$name/bedpe_sorted"
+
+
+#blacklist .bed file
+blacklist="$HOME/BLACKLIST/hg38-blacklist.v2.bed"
+
+#ref fa file
+ref_fa="$HOME/GENCODE_GENOME_INDEX_100bp/GRCh38.primary_assembly.genome.fa"
+
+## CODE TO REMOVE BLACKLISTED REGIONS ##
+
+# Step 1: sort the bam files by name
+#samtools sort -n "$bam/${srr[PBS_ARRAY_INDEX]}.bam" -o "$bam_sorted_by_name/${srr[PBS_ARRAY_INDEX]}_sorted.bam"
+
+# Step 2: Filter BAM to remove blacklisted regions (BAM sorted by name)
+#bedtools intersect -v -abam "$bam_sorted_by_name/${srr[PBS_ARRAY_INDEX]}_sorted.bam" -b "$blacklist" > "$bam_filtered/${srr[PBS_ARRAY_INDEX]}_filtered.bam"
+
+# Step 3: Sort by genomic coordinates
+#samtools sort "$bam_filtered/${srr[PBS_ARRAY_INDEX]}_filtered.bam" -o "$bam_sorted_by_gen/${srr[PBS_ARRAY_INDEX]}.bam"
+
+# Step 4: removal of 0 coordinates (unmapped reads/improper alignment)
+#samtools view -@ 16 -q 1 -t "$ref_fa" -b "$bam_sorted_by_gen/${srr[PBS_ARRAY_INDEX]}.bam" > "$bam_sorted_by_gen/${srr[PBS_ARRAY_INDEX]}_filtered.bam"
+
+# Step 5: Index filtered BAM file (BAM sorted by genomic coordinates). This should produce a .BAI file.
+samtools index "$bam_sorted_by_gen/${srr[PBS_ARRAY_INDEX]}_filtered.bam""
+
+# Step 6: Sort BAM by name (again) before subjecting to BED conversion
+#samtools sort -n "$bam_sorted_by_gen/${srr[PBS_ARRAY_INDEX]}_filtered.bam" | bedtools bamtobed -bedpe -i - > "$bedpe/${srr[PBS_ARRAY_INDEX]}.bedpe"
+
+
+conda deactivate
