@@ -1,0 +1,30 @@
+#!/bin/bash
+#PBS -N fanc_matrix_hic
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=32:mem=128gb
+
+#This PBS script is to convert the normalised contact matrix output from  HiC-Pro into a .hic file so it is compatible for FAN-C loop calling.
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate fanc_env
+
+
+matrix="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/iced/10000/SRR11566171_10000_iced.matrix"
+bed="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/raw/10000/SRR11566171_10000_abs.bed"
+
+output="$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic"
+mkdir -p $output
+
+#tmp_dir="$EPHEMERAL/hi-c/"
+
+#FAN-C to-text code for a compatible format
+#fanc from-txt "${matrix_path}" "${bed_path}" "${output}/SRR11566171_fanc.hic"
+fanc from-txt "$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/iced/10000/SRR11566171_10000_iced.matrix" \
+        "$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/raw/10000/SRR11566171_10000_abs.bed" \
+        "$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/SRR11566171_fanc.hic"
