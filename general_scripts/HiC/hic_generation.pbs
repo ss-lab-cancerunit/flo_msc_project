@@ -14,17 +14,32 @@ eval "$(~/miniforge3/bin/conda shell.bash hook)"
 #activate conda environment
 source activate fanc_env
 
+#sample list
+samples=(SRR11566146 SRR11566147 SRR11566148 SRR11566149 SRR11566171 SRR11566171 SRR11566187)
 
-matrix="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/iced/10000/SRR11566171_10000_iced.matrix"
-bed="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/raw/10000/SRR11566171_10000_abs.bed"
+#resolution
+res=1000000
 
-output="$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic"
-mkdir -p $output
+#outpath
+outpath="$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/${samples[$PBS_ARRAY_INDEX]}"
+mkdir -p $outpath
 
-#tmp_dir="$EPHEMERAL/hi-c/"
+#hic file name
+hic="${samples[$PBS_ARRAY_INDEX]}_${res}_fanc.hic"
+
+#path to files
+inpath="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[$PBS_ARRAY_INDEX]}/matrix"
+
+#matrix and abs.bed file names
+matrix="iced/${res}/${samples[$PBS_ARRAY_INDEX]}_${res}_iced.matrix"
+abs="raw/${res}/${samples[$PBS_ARRAY_INDEX]}_${res}_abs.bed"
+
+
 
 #FAN-C to-text code for a compatible format
-#fanc from-txt "${matrix_path}" "${bed_path}" "${output}/SRR11566171_fanc.hic"
-fanc from-txt "$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/iced/10000/SRR11566171_10000_iced.matrix" \
-        "$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-SRR11566171-1/hic_results/matrix/SRR11566171/raw/10000/SRR11566171_10000_abs.bed" \
-        "$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/SRR11566171_fanc.hic"
+fanc from-txt "${inpath}/${matrix}" \
+        "${inpath}/${abs}" \
+        "${outpath}/${hic}"
+
+#deactivate conda
+conda deactivate
