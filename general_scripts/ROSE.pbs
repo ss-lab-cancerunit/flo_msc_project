@@ -1,0 +1,41 @@
+#!/bin/bash
+#PBS -N Super_ROSE
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -J 0-1
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+# Change to annotation directory
+cd "/rds/general/user/fno124/home/ROSE"
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+#source activate hpcdemo
+conda activate py2env
+
+#path to gff files
+gff="$EPHEMERAL/chip_seq/ren_et_al_2021_cp/MACS3_results_1_cleaned/h3k27ac_gff2"
+
+#path to bam files
+bam="$EPHEMERAL/chip_seq/ren_et_al_2021_cp/bam"
+
+#output directory
+outpath="$EPHEMERAL/chip_seq/ren_et_al_2021_cp/ROSE_output_capan"
+
+#annotation
+#anno="$HOME/ROSE/annotation/hg38_refseq.ucsc"
+
+#samples
+#sample=(SRR11566124 SRR11566139 SRR11566140 SRR11566163 SRR11566164)
+sample=(SRR11566139 SRR11566140)
+control="$EPHEMERAL/chip_seq/ren_et_al_2021_cp/bam/SRR11566129_filtered.bam"
+
+#log
+echo "PROCESSING CAPAN-1 SAMPLES"
+
+#ROSE scripts
+python2 $HOME/ROSE/ROSE_main.py -t 2500 -g hg38 -i "$gff/${sample[PBS_ARRAY_INDEX]}.gff" -r "$bam/${sample[PBS_ARRAY_INDEX]}_filtered.bam" -c $control -o $outpath
