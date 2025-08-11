@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -N bedtools_int_H3K27ac
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=2:mem=4gb
+#PBS -J 0-4
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+# Activate Conda env
+conda activate hpcdemo
+
+# paths to files
+path="/rds/general/user/fno124/ephemeral/chip_seq/diffBED/sample_beds"
+outpath="/rds/general/user/fno124/ephemeral/chip_seq/second_sample_inter"
+mkdir -p $outpath
+
+#suffix
+h3k27_con="$EPHEMERAL/chip_seq/diffBED/h3k27ac_con/H3K27ac_CON_FINAL_LABELLED.bed"
+histone="h3k27ac"
+suffix="bed"
+
+sample_name=("lg" "met_v_norm" "met_v_pri" "pri_v_norm" "peri") #name of the file
+peak_name=("lg" "cap_v_hp" "cap_v_pan" "pan_v_hp" "peri") #name of the peaks
+
+
+# bedtools intersect enables you to keep the scores etc.
+
+echo "intersecting ${path}/${histone}_${sample_name[$PBS_ARRAY_INDEX]}.${suffix} with ${path}/${h3k27_con}"
+
+bedtools sort -i "${path}/${histone}_${sample_name[$PBS_ARRAY_INDEX]}.${suffix}" | \
+        bedtools intersect -a - -b "${h3k27_con}" -wa -wb > "${outpath}/${histone}_${sample_name[PBS_ARRAY_INDEX]}_intersected.bed"
+
+## label the peaks/enhancers
+#awk 'BEGIN {OFS="\t"} { $4 = "${peak_name[$PBS_ARRAY_INDEX]}_peak_" ++i; print }' "${outpath}/H3K27ac_${sample_name[PBS_ARRAY_INDEX]}_intersected.bed"  >"${outpath}/H3K27ac_${sample_name[PBS_ARRAY_INDEX]}_int_LABELLED.bed"
+
+# label intersected peaks
+awk -v prefix="${peak_name[$PBS_ARRAY_INDEX]}_peak_" 'BEGIN {OFS="\t"} { $4 = prefix ++i; print }' \
+  "${outpath}/${histone}_${sample_name[$PBS_ARRAY_INDEX]}_intersected.bed" \
+  > "${outpath}/${histone}_${sample_name[$PBS_ARRAY_INDEX]}_int_LABELLED.bed"
