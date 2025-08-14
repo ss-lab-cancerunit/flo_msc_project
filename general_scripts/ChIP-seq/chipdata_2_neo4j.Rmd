@@ -1,0 +1,212 @@
+---
+title: "chip_neo4j"
+author: "f.obote"
+date: "2025-07-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+
+Install the required libraries
+```{r}
+
+
+```
+
+Load the required libraries
+```{r}
+
+library(rtracklayer)
+library(biomaRt)
+library(dplyr)
+
+```
+
+Bed file containing human genes and their TSS
+```{r}
+# Connect to Ensembl
+mart <- useEnsembl(biomart = "genes", 
+                   dataset = "hsapiens_gene_ensembl")
+
+# Get gene annotations including the TSS information
+# listAttributes(ensembl)
+
+# One gene can have multiple transcripts marked as "basic", but only one (often) is flagged as transcript_is_canonical = 1.
+# This means the primary/reference transcript in ensembl
+
+genes <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol",
+                 "chromosome_name", "transcription_start_site", "strand"),
+  filters = "transcript_is_canonical",
+  values = TRUE,
+  mart = mart
+)
+View(genes)
+
+#filter chromosomes
+genes <- genes[genes$chromosome_name %in% c(1:22, "X", "Y"),]
+View(genes)
+#View(genes)
+
+
+#create a +/- 3 kb window around the TSS
+genes <- genes %>% 
+  mutate(
+    chrom = paste0("chr", chromosome_name),
+    start = pmax(0, transcription_start_site - 3000),
+    end = transcription_start_site + 3000,
+    strand = ifelse(strand == 1, "+", "-"),
+    score = "."
+  )
+
+# ensure start is not < 0
+# genes$start[genes$start < 0] <- 0
+
+View(genes)
+
+# Rearrange columns to BED format
+TSS_bed <- genes %>%
+  select(chrom, start, end, ensembl_gene_id, hgnc_symbol)
+#View(TSS_bed)
+
+# Ensure no scientific notation
+TSS_bed$start <- as.integer(as.numeric(TSS_bed$start))
+TSS_bed$end <- as.integer(as.numeric(TSS_bed$end))
+
+# View(TSS_bed)
+
+# Save to BED file
+write.table(TSS_bed, 
+            file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/TSS/canonical_TSS_3kb_labelled.bed", 
+            sep = "\t", 
+            quote = FALSE,
+            row.names=FALSE,
+            col.names=FALSE)
+
+
+```
+
+#making another TSS bed file with 2.5 kb instead of 3 kb as 3kb may have been too stringent on my data set
+```{R}
+
+#create a +/- 2.5 kb window around the TSS
+genes_1 <- genes %>% 
+  mutate(
+    chrom = paste0("chr", chromosome_name),
+    start = pmax(0, transcription_start_site - 2500),
+    end = transcription_start_site + 2500,
+    strand = ifelse(strand == 1, "+", "-"),
+    score = "."
+  )
+
+# ensure start is not < 0
+# genes$start[genes$start < 0] <- 0
+
+View(genes_1)
+
+# Rearrange columns to BED format
+TSS_bed_1 <- genes_1 %>%
+  select(chrom, start, end, ensembl_gene_id, hgnc_symbol)
+
+# Ensure no scientific notation
+TSS_bed_1$start <- as.integer(as.numeric(TSS_bed$start))
+TSS_bed_1$end <- as.integer(as.numeric(TSS_bed$end))
+
+View(TSS_bed_1)
+
+# Save to BED file
+write.table(TSS_bed_1, 
+            file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/TSS/canonical_TSS_2.5kb_labelled.bed", 
+            sep = "\t", 
+            quote = FALSE,
+            row.names=FALSE,
+            col.names=FALSE)
+
+
+
+```
+
+
+
+Load the .rds data from diffbind: H3K27ac HISTONE MARK
+```{r}
+
+## DATASET: MacDonald et al. 2017 ##
+
+#lung
+mcd_lung <- readRDS("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/mcd_h3k27ac_a38_lg_v_pri.DB.rds")
+mcd_lung
+
+mcd_peri <- readRDS("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/mcd_h3k27ac_a38_peri_v_pri.DB.rds")
+mcd_peri
+
+mcd_a13_lung <- readRDS("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/mcd_h3k27ac_lg_v_pri.DB.rds")
+
+mcd_a13_lung
+
+```
+
+Format the GRanges file to a tsv file
+```{r}
+
+#McD
+
+#peri
+
+#export as bed to get chr, chrom.start, chrom.end
+rtracklayer::export.bed(mcd_peri, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/knowledge_graph/mcd_peri_H3K27ac.bed")
+
+#read bed file
+peri_h3k27ac_bed <- (read.table("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/knowledge_graph/mcd_peri_H3K27ac.bed"))
+
+#combine into a data.frame
+neo4j_h3k27ac_peri <- data.frame(chr = peri_h3k27ac_bed$V1,
+                                 chrStart = peri_h3k27ac_bed$V2,
+                                 chrEnd = peri_h3k27ac_bed$V3,
+                                 LFC = mcd_peri$Fold,
+                                 "p-val" = mcd_peri$`p-value`,
+                                 FDR = mcd_peri$FDR)
+# View(neo4j_h3k27ac_peri)
+
+#save as CSV for neo4j
+write.csv(neo4j_h3k27ac_peri, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/knowledge_graph/mcd_peri_H3K27ac.bed", row.names=FALSE)
+
+# write as bed file to intersect with TSS bed
+write.table(neo4j_h3k27ac_peri, 
+            file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/bed/mcd_peri_H3K27ac.bed", 
+            sep = "\t", 
+            quote = FALSE,
+            row.names=FALSE,
+            col.names=FALSE)
+
+
+```
+
+
+The bed file was filtered against the TSS bed file using bedtools intersect. Now going to convert to a csv file
+```{r}
+
+# load the BED file:
+peri_h3k27ac_filtered <- read.table("C:/Users/flore/rsync_files/TSS/peri_H3K27ac_filtered.bed")
+View(peri_h3k27ac_filtered)
+
+# change col names
+colnames(peri_h3k27ac_filtered) <- c("chr", "chrStart", "chrEnd", "LFC", "pval", "fdr")
+
+peri_en_ID <- paste0("PER_En_", 1:nrow(peri_h3k27ac_filtered))
+# peri_en_ID
+
+peri_h3k27ac_filtered$enh_ID <- peri_en_ID
+
+# save as csv file
+write.csv(peri_h3k27ac_filtered, "C:/Users/flore/rsync_files/TSS/peri_H3K27ac_filtered.csv", row.names = FALSE)
+
+```
