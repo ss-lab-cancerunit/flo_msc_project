@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N ABC
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+conda activate abc-env
+
+#change workdir
+cd $HOME/ABC-Enhancer-Gene-Prediction
+
+
+#config path
+config="config/config.yaml"
+snake="workflow/Snakefile"
+
+#unlock snakemake
+snakemake --unlock
+
+#code for abc prediction
+snakemake -j 16 --snakefile $snake --configfile $config --rerun-incomplete
+
+
+#deactivate conda
+conda deactivate
