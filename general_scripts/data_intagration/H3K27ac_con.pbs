@@ -1,0 +1,47 @@
+#!/bin/bash
+#PBS -N bedops_merge_H3K27ac
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=4:mem=8gb
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+# Change to annotation directory
+cd "/rds/general/user/fno124/home/ROSE"
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+# Activate Conda env
+conda activate hpcdemo
+
+#read the CSV file
+csv="$HOME/chip_seq/h3k27ac.csv"
+IFS=$'\n' read -d '' -r -a samples < <(tail -n +2 "$csv" | cut -d ',' -f1)
+
+
+#broadPeakfiles
+path="/rds/general/user/fno124/ephemeral/chip_seq/H3K27ac_all"
+
+# Initialise an array to store file paths
+declare -a broadPeakFiles=()
+
+# For loop through each sample and build a full path
+for sample in "${samples[@]}"; do
+        file="$path/${sample}_peaks.broadPeak"
+        if [[ -f "$file" ]]; then
+                broadPeakFiles+=("$file")
+        else
+                echo "Warning: File not found for sample $sample at $file" >&2
+        fi
+done
+
+# if [[ -f "$file" ]] checks if the file exists
+
+#print collected paths
+printf "Collected %d broadPeak files:\n" "${#broadPeakFiles[@]}"
+printf '%s\n' "${broadPeakFiles[@]}"
+
+#BED OPS - merge all peak files
+bedops --merge "${broadPeakFiles[@]}" > "${path}/H3K27ac_consensus.bed"
