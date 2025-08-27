@@ -1,0 +1,343 @@
+---
+title: "deg_comparison"
+author: "f.obote"
+date: "2025-04-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+##This markdown file focuses on the comparison of genes from the DEGs of MCD and Ren et al. 2021, and the met databases
+
+
+Install and load required packages
+```{r}
+#install packages
+install.packages("VennDiagram")
+install.packages("UpSetR")
+
+#install ComplexHeatMap
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("ComplexHeatmap")
+BiocManager::install("AnnotationDbi")
+BiocManager::install("EnsDb.Hsapiens.v86")
+```
+
+
+```{r}
+#load packages
+library("VennDiagram")
+library(grid)
+library("UpSetR")
+library(ComplexHeatmap)
+library(reshape2)
+library(AnnotationDbi)
+library(EnsDb.Hsapiens.v86)
+library(dplyr)
+library(biomaRt)
+
+```
+#Read the .csv file
+```{r}
+all_degs_up <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/all_met_upregulated.csv")
+
+save(degs_up, file = "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/all_degs_up.RData")
+load("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/all_degs_up.RData")
+View(degs_up)
+
+degs_up
+
+degs_down <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/downregulated_genes/downregulated_genes_all.csv")
+#View(met_genes)
+
+
+```
+
+
+#Create a Venn Diagram
+```{r}
+#conditions
+set1 = degs_up$capan #ren
+set2 = degs_up$liver #mcd
+set3 = degs_up$lung #mcd
+set4 = degs_up$peritoneum #mcd
+set5 = degs_up$panc_v_hpne #mcd
+set6 = degs_up$capan_v_hpne #ren
+
+
+#create the plot
+#venn.plot <- venn.diagram(x=list(capan_1=set1, liver_met=set2, lung_met=set3, peritoneum_met=set4), filename="met_genes.png", output=TRUE)
+
+##extract the overlapping genes
+#list of the sets
+met_genes_list <- list(set1, set2, set3, set4)
+
+
+overlap_upreg <- calculate.overlap(met_genes_list)
+
+#write.csv(overlap$a6, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overlapping_genes_upreg.csv")
+
+#venn.plot <- venn.diagram(x=list(capan_1=set1, liver_met=set2), filename="capan_vs_liver.png", output=TRUE)
+
+```
+
+##Create an UpSet Graph for Upregulated DEGs across datasets (easier to interpret than a Venn Diagram)
+```{r}
+#convert list to input for UpSet by converting it to a binary format
+upset_list <- list(capan = set1,
+                   liver = set2,
+                   lung = set3,
+                   peritoneum = set4)
+
+#find all unique elements in the lists and condense into a master list:
+all_elements <- unique(unlist(upset_list))
+
+#create a data.frame and use as.integer() to convert logic to numeric values
+upset_df <- data.frame(element=all_elements,
+                       capan = as.integer(all_elements %in% upset_list$capan),
+                       liver = as.integer(all_elements %in% upset_list$liver),
+                       lung = as.integer(all_elements %in% upset_list$lung),
+                       peritoneum = as.integer(all_elements %in% upset_list$peritoneum))
+View(upset_df)
+
+#Plot UpSet and save as .png
+png("C:/Users/flore/rsync_files/my_upset_plot.png", width = 1200, height = 800, res = 150)
+upset(upset_df, nintersects = NA)
+dev.off()
+
+
+# see if any of the genes overlap panc (primary tumour)
+
+upset_up_all <- list(capan_v_panc = set1,
+                   liver = set2,
+                   lung = set3,
+                   peritoneum = set4,
+                  panc = set5,
+                  capan_v_hpne = set6)
+View(upset_up_all)
+
+#find all unique elements in the lists and condense into a master list:
+all_up_unique <- unique(unlist(upset_up_all))
+length(all_up_unique)
+
+#create a data.frame and use as.integer() to convert logic to numeric values
+upset_df <- data.frame(elements=all_up_unique,
+                       capan_vs_panc = as.integer(all_up_unique %in% upset_up_all$capan_v_panc),
+                       liver = as.integer(all_up_unique %in% upset_up_all$liver),
+                       lung = as.integer(all_up_unique %in% upset_up_all$lung),
+                       peritoneum = as.integer(all_up_unique %in% upset_up_all$peritoneum),
+                       panc_vs_hpne = as.integer(all_up_unique %in% upset_up_all$panc),
+                       capan_vs_hpne = as.integer(all_up_unique %in% upset_up_all$capan_v_hpne))
+save(upset_df, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/upset_up_df.RData")
+
+#get HGNC symbols
+degs_upreg_all <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"),
+                        filter="ensembl_gene_id",
+                        value=upset_df$elements,
+                        mart=mart)
+
+degs_upreg_all_symbols <- left_join(upset_df, degs_upreg_all, by = c("elements"= "ensembl_gene_id"))
+
+#write as a csv file
+write.csv(degs_upreg_all_symbols, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/upset_up_df.csv")
+degs_upreg_all_symbols
+
+sum(duplicated(upset_df$elements))
+
+#Plot UpSet and save as .png
+pdf("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/pdac_upset_up_v3.pdf", width = 12 , height=12)
+# upset(upset_df, nintersects = 6)
+upset(upset_df,
+      sets = c("capan_vs_panc", "liver", "lung", "peritoneum", "panc_vs_hpne", "capan_vs_hpne"),
+      nintersects = NA)
+dev.off()
+
+
+
+#retrieve the overlapping DEGs only found in met
+subset_genes <- upset_df$elements[
+  upset_df$capan_vs_panc == 1 &
+  upset_df$liver == 1 &
+  upset_df$lung == 1 &
+  upset_df$peritoneum == 1 &
+  upset_df$capan_vs_hpne == 1 &
+    upset_df$panc_vs_hpne == 0]
+
+length(subset_genes)
+
+
+mart <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+
+#save mart as RData
+save(mart, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/biomaRt/mart.RData")
+
+load("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/biomaRt/mart.RData")
+
+met_upreg_mart <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"),
+                        filter="ensembl_gene_id",
+                        value=subset_genes,
+                        mart=mart)
+
+write.csv(met_upreg_mart, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/met_up_only_v2.csv")
+
+
+```
+
+##Create an Upset Graph for Downregulated DEGs across datasets
+```{r}
+
+#load csv file
+downreg <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/downregulated_genes/downregulated_genes_all.csv")
+
+#create dataframe
+downreg_all_df <- data.frame(downreg)
+downreg_all_df
+
+#extract lists of downregulated genes
+dset1 = downreg_all_df$capan_v_panc #ren
+dset2 = downreg_all_df$liver #mcd
+dset3 = downreg_all_df$lung #mcd
+dset4 = downreg_all_df$peritoneum #mcd
+dset5 = downreg_all_df$capan_v_hpne
+dset6 = downreg_all_df$panc_v_hpne
+
+
+#find overlapping genes
+met_downreg <- list(capan_v_panc = dset1, liver=dset2, lung=dset3, peritoneum=dset4,
+                    capan_v_hpne = dset5, panc_v_hpne = dset6)
+
+#find unique
+met_downreg_unique <- unique(unlist(met_downreg))
+
+
+#create a binary matrix for upset plot
+upset_down_df <- data.frame(elements=met_downreg_unique,
+                       capan_vs_panc = as.integer(met_downreg_unique %in% met_downreg$capan_v_panc),
+                       liver = as.integer(met_downreg_unique %in% met_downreg$liver),
+                       lung = as.integer(met_downreg_unique %in% met_downreg$lung),
+                       peritoneum = as.integer(met_downreg_unique %in% met_downreg$peritoneum),
+                       panc_vs_hpne = as.integer(met_downreg_unique %in% met_downreg$panc_v_hpne),
+                       capan_vs_hpne = as.integer(met_downreg_unique %in% met_downreg$capan_v_hpne))
+save(upset_down_df, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/upset_down_df.RData")
+
+write.csv(upset_down_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/upset_down_df.csv")
+
+#get HGNC symbols
+downreg_hgnc <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol"),
+                        filter="ensembl_gene_id",
+                        value=upset_down_df$elements,
+                        mart=mart)
+
+degs_downreg_all_symbols <- left_join(upset_down_df, downreg_hgnc, by = c("elements"= "ensembl_gene_id"))
+
+#write as a csv file
+write.csv(degs_downreg_all_symbols, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/upset_down_df.csv")
+
+degs_upreg_all_symbols
+
+
+#Plot UpSet and save as .png
+pdf("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/gene_invest/pdac_upset_down_v2.pdf", width = 10 , height=10)
+# upset(upset_df, nintersects = 6)
+upset(upset_down_df,
+      sets = c("capan_vs_panc", "liver", "lung", "peritoneum", "panc_vs_hpne", "capan_vs_hpne"),
+      nintersects = NA)
+dev.off()
+
+
+#ARCHIVE
+# 
+# overlap_downreg <- calculate.overlap(met_downreg)
+# overlap_downreg$a6
+# 
+# venn.plot <- venn.diagram(x=list(capan=dset1, liver=dset2, lung=dset3, peritoneum=dset4), filename="met_genes_downreg.png", output=TRUE)
+
+```
+
+```{r}
+#create upset plot:
+
+#find all unique elements in the lists and condense into a master list:
+all_elements_1 <- unique(unlist(met_downreg))
+
+
+
+#create binary data frame
+upset_downreg <- data.frame(all_elements_1,
+                            capan = as.numeric(all_elements_1 %in% met_downreg$capan),
+                            liver= as.numeric(all_elements_1 %in% met_downreg$liver),
+                            lung= as.numeric(all_elements_1 %in% met_downreg$lung),
+                            peritoneum = as.numeric(all_elements_1 %in% met_downreg$peritoneuom)
+                            )
+
+
+#create upset
+png("upset_plot_downreg.png", width = 1200, height = 800, res = 150)
+upset(upset_downreg, nintersects=NA)
+dev.off()
+```
+
+##Looking at whether the upregulated genes overlap with metastatic gene databases
+```{r}
+#overlapped list for upregulated genes
+overlap_upreg_all <- data.frame(overlap_upreg$a6)
+colnames(overlap_upreg_all) <- "geneID"
+View(overlap_upreg_all)
+
+#convert to list from geneID to gene symbols
+#make a table using the following code
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = overlap_upreg_all$geneID,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+#join the tables based on gene symbol
+overlap_upreg_all <- left_join(overlap_upreg_all, annotations_ensdb, by=c("geneID"="GENEID"))
+View(overlap_upreg_all)
+
+
+#dbEMT
+met_gene_list <- read.csv("C:/Users/flore/rsync_files/metastatic_genesets.csv")
+
+
+#meged metastatic gene list with my gene list
+merged_list_upreg <- list(my_list = overlap_upreg_all$SYMBOL, COSMIC = met_gene_list$COSMIC.Cancer.Gene.Census, ncR2Met = met_gene_list$ncR2Met, HCMDB = met_gene_list$Human.Cancer.Metastasis.Database, CMG = met_gene_list$Cancer.Metastasis.Genes, dbEMT2.0 = met_gene_list$dbEMT2.0, LncR2Met = met_gene_list$LncR2Metasta, CHG=met_gene_list$CHG.Activating.Invasion.and.Metastasis)
+View(merged_list_upreg)
+
+overlap <- calculate.overlap(merged_list_upreg)
+
+
+
+
+#find all unique elements in the lists and condense into a master list:
+all_elements_2 <- unique(unlist(merged_list_upreg))
+
+
+#create binary data frame for upset graph
+upset_upreg_met <- data.frame(all_elements_2,
+                            my_list = as.numeric(all_elements_2 %in% merged_list_upreg$my_list),
+                            COSMIC = as.numeric(all_elements_2 %in% met_gene_list$COSMIC.Cancer.Gene.Census),
+                            ncR2Met = as.numeric(all_elements_2 %in% met_gene_list$ncR2Met),
+                            HCMDB = as.numeric(all_elements_2 %in% met_gene_list$Human.Cancer.Metastasis.Database),
+                            CMG = as.numeric(all_elements_2 %in% met_gene_list$Cancer.Metastasis.Genes),
+                            dbEMT2.0 = as.numeric(all_elements_2 %in% met_gene_list$dbEMT2.0),
+                            LncR2Met = as.numeric(all_elements_2 %in% met_gene_list$LncR2Metasta),
+                            CHG = as.numeric(all_elements_2 %in% met_gene_list$CHG.Activating.Invasion.and.Metastasis))
+View(upset_upreg_met)
+#make an upset graph
+png("upset_plot_upreg_dbEMT.png", width = 1200, height = 800, res = 150)
+upset(upset_upreg_met, nsets=8)
+dev.off() 
+```
+

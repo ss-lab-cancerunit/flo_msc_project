@@ -1,0 +1,892 @@
+---
+title: "gprofiler_analysis"
+author: "f.obote"
+date: "2025-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+This R Markdown document contains the code required to perform gene ontology analysis on RNA-seq DEGs and annotated ChIP-peaks
+
+#install required packages
+```{r}
+#install packages
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("rrvgo")
+BiocManager::install("org.Hs.eg.db")
+
+install.packages("gprofiler2")
+```
+
+#load the packages
+```{r}
+
+#load library
+library(gprofiler2)
+library(dplyr)
+library(UpSetR)
+library("VennDiagram")
+library(rrvgo)
+library("org.Hs.eg.db")
+library(AnnotationDbi)
+library(EnsDb.Hsapiens.v86)
+library(tidyverse)
+
+```
+
+
+#Load gene lists csv file UPREGULATED
+```{r}
+#load the csv file of all the gene lists
+upreg_met_list <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/all_met_upregulated.csv")
+#View(upreg_met_list)
+```
+
+#Load gene csv file DOWNREGULATED
+```{r}
+#load csv file of all the downregulated genes
+downreg_met_list <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/downregulated_genes/downregulated_genes_all.csv")
+
+#View(downreg_met_list)
+
+```
+
+#Load chip data h3k27ac
+```{r}
+#mcd et al. 2017 H3K27ac
+
+#h3k27_lung <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research #Project/ChIP_data/mcd_diffbind/granges/tissue_condition/lung_overlap.csv")
+
+#a13 lung met
+h3k27_lung_a13 <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/a13_lung_h3k27ac.csv")
+h3k27_lung_a13
+#a38 lung met
+h3k27_lung_a38 <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/a38_lung_h3k27ac.csv")
+
+#peritoneum met
+h3k27_peri <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/mcd_diffbind/granges/tissue_condition/peri_h3k27ac_list.csv")
+
+
+# ren et al. 2021 H3K27ac
+
+#met vs norm
+h3k27_cap_hp <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/ren_diffbind/gene_lists/h3k27ac_met_v_norm.csv")
+
+#met vs panc
+h3k27_cap_panc <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/ren_diffbind/gene_lists/h3k27_met_v_pri.csv")
+
+#panc vs hpne
+h3k27_panc_hp <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/ren_diffbind/gene_lists/h3k27_pri_v_norm.csv")
+
+
+```
+
+
+This section contains the code for the gene ontology analysis for the RNA-seq DEGs
+
+
+#gprofiler: capan vs primary upregulated
+```{r, capan vs primary}
+
+#background list
+cp_p <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/capan_vs_panc/overview_DEGs.csv")
+View(cp_p)
+
+cp_p_genes <- cp_p$short_gene_id
+
+#Capan-1 upregulated met genes
+gostres <- gost(query = upreg_met_list$capan, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=cp_p_genes, numeric_ns = "", sources=NULL, as_short_link = FALSE, highlight=TRUE) #output warning of "highlighting not supported" because in g:Profiler highlighting isn't supported for flat gene lists, not ordered ones.
+
+#retrieve the output names
+names(gostres)
+
+#Result of GO analysis
+View(gostres$result)
+
+#save as a data frame:
+capan_go_df <- data.frame(gostres$result)
+capan_go_df
+
+#write.table(capan_go_df, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/cap_v_panc_up.csv")
+
+#Retrieve the term ID:
+capan_go_list <- c(gostres$result[9])
+View(capan_go_list)
+
+
+#manhattan plot - interactive visualisation
+#capped = TRUE indicates whether the -log10(p-values) would be capped at 16 if bigger than 16.
+gostplot(gostres, capped=FALSE, interactive=TRUE)
+
+```
+
+#gprofiler: capan vs hpne
+```{r, capan vs hpne}
+
+#background
+cap_v_hp <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/capan_vs_hpne/ren_overview_cap_v_hp.csv")
+
+#Capan-1 upregulated met genes
+gostres_5 <- gost(query = upreg_met_list$capan_v_hpne, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=cap_v_hp$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE, highlight=TRUE) #output warning of "highlighting not supported" because in g:Profiler highlighting isn't supported for flat gene lists, not ordered ones.
+
+
+#save as a data frame:
+capan_go_df_1 <- data.frame(gostres_5$result)
+
+#Retrieve the term ID:
+cap_v_hp_go_list <- c(gostres_5$result[9])
+
+#manhattan plot - interactive visualisation
+#capped = TRUE indicates whether the -log10(p-values) would be capped at 16 if bigger than 16.
+gostplot(gostres_5, capped=FALSE, interactive=TRUE)
+
+
+
+```
+
+#gprofiler: panc vs hpne
+```{r}
+
+#background
+panc_back <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/ren_et_al_results/panc_vs_hpne/panc_v_hp_overview.csv")
+View(panc_back)
+
+#gprofiler code for liver
+gostres_panc <- gost(query = upreg_met_list$panc_v_hpne, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=panc_back$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+#result
+panc_go_df <- data.frame(gostres_panc$result)
+
+panc_go_list <- c(gostres_panc$result[9])
+
+
+```
+
+
+
+#gprofiler: liver
+```{r}
+#background
+liv_back <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/mcd_et_al_results/DEG/liver_vs_pri/liver_vs_pri_df.csv")
+View(liv_back)
+
+#gprofiler code for liver
+gostres_1 <- gost(query = upreg_met_list$liver, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=liv_back$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+#results of GO analysis
+liv_df <- data.frame(gostres_1$result)
+liv_df
+ 
+#manhattan plot
+gostplot(gostres_1, capped=FALSE, interactive=TRUE)
+
+#save GO_ID list
+liver_go_list <- c(gostres_1$result[9])
+liver_go_list
+```
+
+
+
+
+#gprofiler: lung
+```{r}
+#background
+lg_back <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/mcd_et_al_results/DEG/lung_vs_pri/lung_vs_pri.csv")
+
+#gprofiler code to run GO analysis on lung
+gostres_2 <- gost(query = upreg_met_list$lung, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=lg_back$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+#results of GO analysis
+lung_df <- data.frame(gostres_2$result)
+View(lung_df)
+
+#manhattan plot
+gostplot(gostres_2, capped=FALSE, interactive=TRUE)
+
+# GO_ID list
+lung_go_list <- c(gostres_2$result[9])
+lung_go_list
+
+
+```
+
+#gprofiler: peritoneum
+```{r}
+#background
+peri_back <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/mcd_et_al_results/DEG/peri_vs_pri/peri_vs_pri.csv")
+
+#gprofiler code to run GO analysis on peritoneum
+gostres_3 <- gost(query = upreg_met_list$peritoneum, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=peri_back$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+#results of GO analysis
+peri_df <- data.frame(gostres_3$result)
+
+
+#manhattan plot
+gostplot(gostres_3, capped=FALSE, interactive=TRUE)
+
+#save GO_ID list
+peri_go_list <- c(gostres_3$result[9])
+peri_go_list
+
+
+
+```
+
+
+#upset graph to compare the GOs
+```{r}
+#compile into a dataframe:
+go_upreg <- bind_rows(data.frame(capan = capan_go_list$term_id),
+                      data.frame(capan_v_hpne = cap_v_hp_go_list$term_id),
+                       data.frame(liver = liver_go_list$term_id),
+                       data.frame(lung = lung_go_list$term_id),
+                       data.frame(peritoneum = peri_go_list$term_id))
+
+
+
+#find all unique elements in the lists and condense into a master list:
+elements <- unique(unlist(list(go_upreg$capan, go_upreg$capan_v_hpne, go_upreg$liver, go_upreg$lung, go_upreg$peritoneum)))
+
+upset_go_upreg <- data.frame(elements,
+                             capan_v_panc1 = as.numeric(elements %in% go_upreg$capan),
+                             capan_v_hpne = as.numeric(elements %in% go_upreg$capan_v_hpne),
+                             liver = as.numeric(elements %in% go_upreg$liver),
+                             lung = as.numeric(elements %in% go_upreg$lung),
+                             peritoneum = as.numeric(elements %in% go_upreg$peritoneum)) %>%
+  na.omit(upset_go_upreg)
+
+upset_go_upreg
+
+#make an upset graph
+png("upset_plot_upreg_go.png", width = 1200, height = 800, res = 150)
+upset(upset_go_upreg, nsets=6)
+dev.off() 
+
+```
+
+
+#Running gprofiler on overlapping DEGs found in the metastases but not found in PANC-1
+```{r}
+#read in the csv file
+met_up_only <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/met_up_only.csv")
+length(met_up_only$ensembl_gene_id)
+
+#read in the PDAC backgroun
+pdac_back <- read.csv("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/pdac_background.csv")
+
+#run gene ontology
+gostres_shared_up <- gost(query = met_up_only$ensembl_gene_id, organism = "hsapiens", ordered_query=FALSE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=pdac_back$unique_genes, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+save(gostres_shared_up, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/gostres_shared_up.RData")
+
+load("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/gostres_shared_up.RData")
+
+View(gostres_shared_up$result)
+
+# DATA FRAME FOR THE GO ANALYSIS
+gostres_shared_up_df <- data.frame(gostres_shared_up$result)
+
+# View(gostres_shared_up_df)
+
+#turn GO into a data frame then save as csv
+#collapse lists that may be lists
+go_met_shared_up <- gostres_shared_up$result %>%
+  mutate(across(where(is.list), ~ sapply(., paste, collapse = ",")))
+
+
+write.table(go_met_shared_up, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/upregulated_genes/met_up_go_shared.csv")
+
+```
+
+
+
+
+The background used for ChIP-seq gene ontology (GO) analysis will be derived from RNA-seq data. This is because RNA-seq identifies genes that are actively expressed, providing a relevant context for interpreting ChIP-seq peaks. Since ChIP-seq detects protein-DNA interactions or histone modifications that regulate gene expression, limiting the GO analysis to genes that are transcriptionally active ensures more biologically meaningful results and reduces bias from non-expressed or inaccessible regions of the genome.
+
+#CHIP DATA
+
+Convert the ensembl IDs to HGNC symbol for the background genes
+```{r}
+#backgrounds 
+
+
+#convert to list from geneID to gene symbols
+
+#lung
+annotations_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = lg_back$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+#join the tables based on gene symbol
+lg_back_hgnc <- left_join(lg_back, annotations_ensdb, by=c("short_gene_id"="GENEID"))
+View(lg_back_hgnc)
+
+
+#peritoneum
+peri_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = peri_back$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID")
+
+peri_back_hgnc <- left_join(peri_back, peri_ensdb, by=c("short_gene_id"="GENEID"))
+peri_back_hgnc
+
+#cap v hpne
+cap_v_hp
+
+cap_hp_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = cap_v_hp$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID") 
+
+cap_v_hp_back <- left_join(cap_v_hp, cap_hp_ensdb, by=c("short_gene_id"="GENEID"))
+
+#cap v panc <- 
+cp_p
+
+cap_panc_ensdb <- AnnotationDbi::select(EnsDb.Hsapiens.v86,
+                                           keys = cp_p$short_gene_id,
+                                           columns = c("SYMBOL","GENEBIOTYPE"),
+                                           keytype = "GENEID") 
+
+cap_v_panc_back <- left_join(cp_p, cap_panc_ensdb, by=c("short_gene_id"="GENEID"))
+
+
+```
+
+
+#Gprofiler: lung
+```{r}
+
+
+h3k27_lung <- gost(query = h3k27_lung$Lung.overlap.gene.list, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+#results of GO list
+h3k27_lung <- data.frame(h3k27_lung$result)
+View(h3k27_lung)
+
+# GO_ID list
+lung_go_list <- c(gostres_2$result[9])
+lung_go_list
+
+
+#a13 lung
+go_lung_a13 <- gost(query = h3k27_lung_a13$HGNC_symbol, organism = "hsapiens", ordered_query=FALSE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, custom_bg= lg_back_hgnc$SYMBOL, correction_method="g_SCS", domain_scope="annotated", numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+View(go_lung_a13$result)
+
+#a38 lung
+go_lung_a38 <- gost(query = h3k27_lung_a38$HGNC_symbol, organism = "hsapiens", ordered_query=FALSE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, custom_bg= lg_back_hgnc$SYMBOL, correction_method="g_SCS", domain_scope="annotated", numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+View(go_lung_a38$result)
+
+#capan vs hpne
+go_cap_v_hp <- gost(query = h3k27_cap_hp$HGNC_symbol, organism = "hsapiens", ordered_query=FALSE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg= cap_v_hp_back$SYMBOL, numeric_ns = "", sources=NULL, as_short_link = FALSE, highlight=TRUE)
+
+saveRDS(go_cap_v_hp, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/GO/H3K27ac/gprofiler/go_cap_v_hp.rds")
+
+go_cap_v_hp <- readRDS("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/ChIP_data/GO/H3K27ac/gprofiler/go_cap_v_hp.rds")
+
+go_cap_v_hp$result
+
+
+```
+
+
+#overlapping GO IDs
+```{r}
+
+up_go_overlap <- calculate.overlap(list(go_upreg$capan, go_upreg$capan_v_hpne, go_upreg$liver, go_upreg$lung, go_upreg$peritoneum))
+View(up_go_overlap)
+up_go_overlap$a31
+```
+
+## DOWNREGULATED GENES ##
+```{r}
+#make a function for gost() 
+gost_fun <- function(gene_list) {
+  gostres <- gost(query = gene_list, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE,  
+  exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", 
+  domain_scope="annotated", custom_bg=NULL, numeric_ns = "", sources=NULL, as_short_link = FALSE, highlight=TRUE) 
+}
+
+
+
+#capan vs panc
+cap_downreg <- gost_fun(downreg_met_list$capan)
+cap_down_ls <- c(cap_downreg$result[9])
+cap_down_df <- data.frame(cap_downreg$result)
+
+#capan vs hpne
+cap_v_hp_downreg <- gost_fun(downreg_met_list$capan_v_hpne)
+cap_v_hp_ls <- c(cap_v_hp_downreg$result[9])
+cap_v_hp_down_df <- data.frame(cap_v_hp_downreg$result)
+
+#liver
+liv_downreg <- gost_fun(downreg_met_list$liver)
+liv_down_ls <- c(liv_downreg$result[9])
+liv_down_df <- data.frame(liv_downreg$result)
+
+
+#lung
+lg_downreg <- gost_fun(downreg_met_list$lung)
+lg_down_ls <- c(lg_downreg$result[9])
+lg_down_df <- data.frame(lg_downreg$result)
+
+lg_down_df
+
+
+#peritoneum
+peri_downreg <- gost_fun(downreg_met_list$peritoneum)
+peri_down_ls <- c(peri_downreg$result[9])
+peri_down_df <- data.frame(peri_downreg$result)
+
+peri_down_df
+
+gostres_peri_down <- gost(query = downreg_met_list$peritoneum, organism = "hsapiens", ordered_query=TRUE, multi_query = FALSE, significant = TRUE, exclude_iea=FALSE, measure_underrepresentation = FALSE, evcodes = FALSE, user_threshold=0.05, correction_method="g_SCS", domain_scope="annotated", custom_bg=peri_back$short_gene_id, numeric_ns = "", sources=NULL, as_short_link = FALSE)
+
+```
+
+#find the overlapping GOs in the DOWNREGULATED gene lists
+```{r}
+#combine the GO lists into one dataframe
+go_down <- bind_rows(data.frame(capan = cap_down_ls$term_id),
+                     data.frame(cap_v_hp = cap_v_hp_ls$term_id),
+                     data.frame(liver = liv_down_ls$term_id),
+                     data.frame(lung = lg_down_ls$term_id),
+                     data.frame(peritoneum = peri_down_ls$term_id))
+go_down
+#write the dataframe into a csv file
+write.csv(go_down, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/overall_met_analysis/downregulated_genes/down_go_df.csv")
+
+
+
+#find all unique elements in the lists and condense into a master list:
+elements_1 <- unique(unlist(list(go_down$capan, go_down$cap_v_hp, go_down$liver, go_down$lung, go_down$peritoneum)))
+
+upset_go_down <- data.frame(elements_1,
+                             capan_v_panc1 = as.numeric(elements_1 %in% go_down$capan),
+                             capan_v_hpne = as.numeric(elements_1 %in% go_down$cap_v_hp),
+                             liver = as.numeric(elements_1 %in% go_down$liver),
+                             lung = as.numeric(elements_1 %in% go_down$lung),
+                             peritoneum = as.numeric(elements_1 %in% go_down$peritoneum)) %>%
+  na.omit(upset_go_down)
+
+
+#make an upset graph
+png("upset_plot_down_go.png", width = 1200, height = 800, res = 150)
+upset(upset_go_down, nsets=5)
+dev.off() 
+
+
+#view overlapping GOs
+down_go_overlap <- calculate.overlap(list(go_down$capan, go_down$cap_v_hp, go_down$liver, go_down$lung, go_down$peritoneum))
+View(down_go_overlap)
+down_go_overlap$a29
+
+
+
+
+```
+
+
+#Using rrvgo to look at the similarity of GO terms: capan vs pri
+```{r}
+#calculating similarity matrix (biological process)
+example <- read.delim(system.file("extdata/example.txt", package="rrvgo")) #example data frame
+View(example)
+
+simMatrix <- calculateSimMatrix(capan_go_df$term_id,
+                                orgdb="org.Hs.eg.db",
+                                ont="BP", #biological process
+                                method="Rel")
+simMatrix
+
+#scores from GO ID
+scores <- setNames(-log10(capan_go_df$p_value), capan_go_df$term_id)
+
+#group terms based on similarity matrix
+reducedTerms <- reduceSimMatrix(simMatrix,
+                                scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+#plot scatter plot
+scatterPlot(simMatrix, reducedTerms)
+
+#plot heatmap
+png("heat_map_capan_v_hpne.png", width = 1200, height = 800, res = 150)
+heatmapPlot(simMatrix,
+            reducedTerms,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=6)
+dev.off()
+```
+
+#Repeat this for molecular function capan_vs_panc
+```{r}
+
+#calculating similarity matrix (molecular process)
+
+
+simMatrix_mf <- calculateSimMatrix(capan_go_df$term_id,
+                                orgdb="org.Hs.eg.db",
+                                ont="MF", #GO:MF
+                                method="Rel")
+simMatrix_mf
+
+#group terms based on similarity matrix
+reducedTerms_mf <- reduceSimMatrix(simMatrix_mf,
+                                scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+#plot heatmap
+png("heat_map_capan_v_hpne_mf.png", width = 1200, height = 800, res = 150)
+heatmapPlot(simMatrix_mf,
+            reducedTerms_mf,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=6)
+dev.off()
+
+```
+
+
+
+##making function to automate rrvgo: MOLECULAR FUNCTION
+```{r}
+#molecular function rrvgo function
+
+rrvgo_mf <- function(go_list, go_scores) {
+    simMatrix_mf <- calculateSimMatrix(go_list,
+                                orgdb="org.Hs.eg.db",
+                                ont="MF", 
+                                method="Rel")
+  
+  #group terms based on similarity matrix
+  reducedTerms_mf <- reduceSimMatrix(simMatrix_mf,
+                                go_scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+  
+  #png
+  png("scatter_mf.png", width=1200, height=800, res=150)
+  scatterPlot(simMatrix_mf, reducedTerms_mf)
+}
+
+## UPREGULATED ##
+
+#capan vs panc
+scores_cap <- setNames(-log10(capan_go_df$p_value), capan_go_df$term_size)
+rrvgo_mf(capan_go_df$term_id, scores)
+
+
+#capan vs hpne
+scores_cap_hp <- setNames(-log10(capan_go_df_1$p_value), capan_go_df_1$term_id)
+rrvgo_mf(capan_go_df_1$term_id, scores_cap_hp)
+
+#liver
+scores_liv <- setNames(-log10(liv_df$p_value), liv_df$term_id)
+rrvgo_mf(liv_df$term_id, scores_liv)
+
+#lung
+scores_lung <- setNames(-log10(lung_df$p_value), lung_df$term_id)
+rrvgo_mf(lung_df$term_id, scores_lung)
+
+#peri
+scores_peri <- setNames(-log10(peri_df$p_value), peri_df$term_id)
+rrvgo_mf(peri_df$term_id, scores_peri)
+
+
+```
+
+
+#rrvgo function for BIOLOGICAL PROCESS
+```{r}
+
+rrvgo_bp <- function(go_list, go_scores) {
+    simMatrix_bp <- calculateSimMatrix(go_list,
+                                orgdb="org.Hs.eg.db",
+                                ont="BP",
+                                method="Rel")
+  
+  #group terms based on similarity matrix
+  reducedTerms_bp <- reduceSimMatrix(simMatrix_bp,
+                                go_scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+  
+  #png
+png("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/panc_up_go_bp.png", width=1200, height=800, res=150)
+scatterPlot(simMatrix_bp, reducedTerms_bp)
+dev.off()
+}
+
+## UPREGULATED ## 
+
+#capan vs hpne
+scores_cap_hp <- setNames(-log10(capan_go_df_1$p_value), capan_go_df_1$term_id)
+rrvgo_bp(capan_go_df_1$term_id, scores_cap_hp)
+
+#panc vs hpne
+scores_panc <- setNames(-log10(panc_go_df$p_value), panc_go_df$term_id)
+rrvgo_bp(panc_go_df$term_id, scores_panc)
+
+#manually
+scores_panc_degs_bp <- calculateSimMatrix(panc_go_df$term_id,
+                                   orgdb="org.Hs.eg.db",
+                                   ont="BP",
+                                   method="Rel")
+
+panc_reducedTerms_bp <- reduceSimMatrix(scores_panc_degs_bp,
+                                scores_panc,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+View(panc_reducedTerms_bp)
+
+#save as RData
+save(panc_reducedTerms_bp, "C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/panc_rrvgo_bp.RData")
+
+png("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/panc_up_go_bp.png", width=1200, height=800, res=150)
+scatterPlot(scores_panc_degs_bp, panc_reducedTerms_bp)
+dev.off()
+
+panc_reducedTerms_df <- panc_reducedTerms_bp %>% 
+  arrange(desc(score)) 
+
+  
+
+#liver
+scores_liv <- setNames(-log10(liv_df$p_value), liv_df$term_id)
+rrvgo_bp(liv_df$term_id, scores_liv)
+
+#lung
+scores_lung <- setNames(-log10(lung_df$p_value), lung_df$term_id)
+rrvgo_bp(lung_df$term_id, scores_lung)
+
+#peri
+scores_peri <- setNames(-log10(peri_df$p_value), peri_df$term_id)
+rrvgo_bp(peri_df$term_id, scores_peri)
+
+#shared DEGs gene ontology
+scores_shared_degs <- setNames(-log10(gostres_shared_up_df$p_value), gostres_shared_up_df$term_id)
+rrvgo_bp(gostres_shared_up_df$term_id, scores_shared_degs)
+
+scores_shared_degs_bp <- calculateSimMatrix(gostres_shared_up_df$term_id,
+                                   orgdb="org.Hs.eg.db",
+                                   ont="BP",
+                                   method="Rel")
+
+shared_up_reducedTerms_bp <- reduceSimMatrix(scores_shared_degs_bp,
+                                scores_shared_degs,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+save(shared_up_reducedTerms_bp, file="C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/shared_up_reducedTerms_bp.RData")
+
+png("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/Gprofiler/Upregulated/shared_up_go_bp.png", width=1200, height=800, res=150)
+scatterPlot(scores_shared_degs_bp, shared_up_reducedTerms_bp)
+dev.off()
+
+## DOWNREGULATED  DEGs## 
+
+#capan vs hpne
+scores_c_hp <- setNames(-log10(cap_v_hp_down_df$p_value), cap_v_hp_down_df$term_id)
+rrvgo_bp(cap_v_hp_down_df$term_id, scores_c_hp)
+
+#capan vs panc-1
+scores_c_pnc <- setNames(-log10(cap_down_df$p_value), cap_down_df$term_id)
+rrvgo_bp(cap_down_df$term_id, scores_c_pnc)
+
+#liv
+scores_liv_down <- setNames(-log10(liv_down_df$p_value), liv_down_df$term_id)
+rrvgo_bp(liv_down_df$term_id, scores_liv_down)
+
+#lung
+scores_lng_down <- setNames(-log10(lg_down_df$p_value), lg_down_df$term_id)
+rrvgo_bp(lg_down_df$term_id, scores_lng_down)
+
+#peritoneum
+scores_peri_down <- setNames(-log10(peri_down_df$p_value), peri_down_df$term_id)
+rrvgo_bp(peri_down_df$p_value, scores_peri_down)
+
+
+```
+
+
+#GO on ChIP data
+
+```{r}
+
+## CHIP DATA
+#lung 
+scores_a13_lung <- setNames(-log10(go_lung_a13$result$p_value), go_lung_a13$result$term_id)
+rrvgo_bp(go_lung_a13$result$p_value, scores_a13_lung)
+
+scores_a38_lung <- setNames(-log10(go_lung_a38$result$p_value), go_lung_a38$result$term_id)
+rrvgo_bp(go_lung_a38$result$term_id, scores_a38_lung)
+
+scores_chip_cap_hp <- setNames(-log10(go_cap_v_hp$result$p_value), go_cap_v_hp$result$term_id)
+rrvgo_bp(go_cap_v_hp$result$term_id, scores_chip_cap_hp)
+
+go_cap_v_hp$result$term_id
+
+
+```
+
+#Visualising the bp GO terms from rrvgo as dot plots
+```{r}
+
+# PANC vs HPNE
+
+panc_reducedTerms_top20 <- panc_reducedTerms_df[1:20,]
+View(panc_reducedTerms_top20)
+
+panc_reducedTerms_top50 <- panc_reducedTerms_df[1:50,]
+
+View(panc_reducedTerms_df)
+
+colnames(panc_reducedTerms_top20)
+
+pdf("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/rrvgo/upreg/panc_v_hp_go_50.pdf")
+ggplot(panc_reducedTerms_top50, 
+       aes(x=score, 
+           y=reorder(term, score),
+           size=size,
+           color=cluster)) +
+  geom_point(alpha=0.7) +
+  scale_color_gradient(low = "#363969", high="#FCA6BC") +
+  theme_minimal(base_size=12) +
+  labs(x = "-log10(p-value)", y="GO Term",
+       size = "Gene Count", color = "Cluster") +
+  theme(axis.text.y = element_text(size=8))
+dev.off()
+
+# Up DEGs
+shared_up_reducedTerms_top20 <- shared_up_reducedTerms_bp[1:20,]
+Viw
+shared_up_reducedTerms_top50 <- shared_up_reducedTerms_bp[1:50,]
+View(shared_up_reducedTerms_bp)
+
+pdf("C:/Users/flore/Documents/C Applied Genomics MSc/Research Project/DEA/rrvgo/upreg/shared_degs_go_50.pdf", width=10, height=10)
+ggplot(shared_up_reducedTerms_top50, 
+       aes(x=score, 
+           y=reorder(term, score),
+           size=size,
+           color=cluster)) +
+  geom_point(alpha=0.7) +
+  scale_color_gradient(low = "#363969", high="red") +
+  theme_minimal(base_size=12) +
+  labs(x = "-log10(p-value)", y="GO Term",
+       size = "Gene Count", color = "Cluster") +
+  theme(axis.text.y = element_text(size=8))
+dev.off()
+
+View(shared_up_reducedTerms_bp)
+
+```
+
+#rrvgo function: CELLULAR COMPONENT
+```{r}
+
+rrvgo_cc <- function(go_list, go_scores) {
+    simMatrix_bp <- calculateSimMatrix(go_list,
+                                orgdb="org.Hs.eg.db",
+                                ont="CC", #GO:CC
+                                method="Rel")
+  
+  #group terms based on similarity matrix
+  reducedTerms_bp <- reduceSimMatrix(simMatrix_bp,
+                                go_scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+  
+  #png
+  png("scatter_plot_cc.png", width=1200, height=800, res=150)
+  scatterPlot(simMatrix_bp, reducedTerms_bp)
+}
+
+#capan vs panc-1#
+scores_cap <- setNames(-log10(capan_go_df$p_value), capan_go_df$term_id)
+rrvgo_cc(capan_go_df$term_id, scores_cap)
+
+#capan vs hpne#
+scores_cap_hp <- setNames(-log10(capan_go_df_1$p_value), capan_go_df_1$term_id)
+rrvgo_cc(capan_go_df_1$term_id, scores_cap_hp)
+
+#liver#
+scores_liv <- setNames(-log10(liv_df$p_value), liv_df$term_id)
+rrvgo_cc(liv_df$term_id, scores_liv)
+
+#lung
+scores_lung <- setNames(-log10(lung_df$p_value), lung_df$term_id)
+rrvgo_cc(lung_df$term_id, scores_lung)
+
+#peri
+scores_peri <- setNames(-log10(peri_df$p_value), peri_df$term_id)
+rrvgo_cc(peri_df$term_id, scores_peri)
+
+```
+
+
+#RRVGO Downregulated:
+```{r}
+rrvgo_fun <- function(list, scores) {
+  rrvgo_mf(list, scores)
+rrvgo_bp(list, scores)
+rrvgo_cc(list, scores)
+}
+
+#capan vs panc-1
+#I THINK I NEED TO MAKE INTO A DATAFRAME
+scores_cap_d <- setNames(-log10(cap_downreg$result[3]), cap_down_ls$term_id)
+rrvgo_fun(cap_down_ls$term_id, scores_cap_d)
+
+
+
+
+
+```
+
+
+#ARCHIVE CODE
+```{r}
+
+rrvgo_bp <- function(go_list, go_scores) {
+  simMatrix_bp <- calculateSimMatrix(go_list,
+                                orgdb="org.Hs.eg.db",
+                                ont="BP", #GO:CC
+                                method="Rel")
+  
+  #group terms based on similarity matrix
+  reducedTerms_bp <- reduceSimMatrix(simMatrix_bp,
+                                go_scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+  #plot heatmap
+  png("heat_map_bp.png", width = 1200, height = 800, res = 150)
+  heatmapPlot(simMatrix_bp,
+            reducedTerms_bp,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=6)
+  dev.off()
+  
+}
+```
