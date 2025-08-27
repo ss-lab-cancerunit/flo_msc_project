@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -N SRR11566144_shift
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=8:mem=16gb
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate hpcdemo
+
+bam="$HOME/atac_seq/ren_et_al_2021/sorted_trimmed_bam/SRR11566144_ts.bam"
+outpath="$EPHEMERAL/atac_seq/ren_et_al_2021/sorted_trimmed_bam"
+mkdir -p $outpath
+
+#code to shift the ATAC-seq bam files to account for Tn5 insertion
+alignmentSieve -b "$bam" -p 8 -o "${outpath}/SRR11566144_ts_shifted_1.bam"
