@@ -1,0 +1,46 @@
+#!/bin/bash
+#PBS -N hic2juicy
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=128:mem=200gb
+#PBS -J 0-11
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+conda activate HiC-Pro_v3.1.0
+
+
+# assign memory to JAVA
+export _JAVA_OPTIONS="-Xmx128g"
+
+#Samples array
+samples=(SRR11566146 SRR11566147 SRR11566148 SRR11566149 SRR11566165 SRR11566170 SRR11566171 SRR11566172 SRR11566173 SRR11566176 SRR11566187 SRR11566188)
+#samples=(SRR11566165)
+
+#gsize
+gsize="$HOME/HiC-Pro/annotation/GRCh38_EBV.chrom.sizes.tsv"
+
+#juicejar
+juicejar="$HOME/juicer_tools/juicer_tools.jar"
+
+
+#path
+tmp="$EPHEMERAL/hi-c"
+
+inpath="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[PBS_ARRAY_INDEX]}/data/${samples[PBS_ARRAY_INDEX]}"
+
+outpath="$EPHEMERAL/hi-c/ren_et_al_2021/juicy_hic_3"
+mkdir -p $outpath
+
+#validPairs suffix
+validPairs="${samples[PBS_ARRAY_INDEX]}.allValidPairs"
+
+
+#Code to convert hic-pro output to juicer .hic 
+echo "processing $EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[PBS_ARRAY_INDEX]}/data/${samples[PBS_ARRAY_INDEX]}"
+
+$HOME/HiC-Pro/bin/utils/hicpro2juicebox.sh -i "${inpath}/${validPairs}" -g "${gsize}" -j "${juicejar}" -o "${outpath}" -t "${tmp}"

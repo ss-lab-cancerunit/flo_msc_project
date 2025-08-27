@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N ab_SRR11566146
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=32:mem=128gb
+
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate fanc_env
+
+fancplot -o "$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/SRR11566146/SRR11566146.ab.png" chr18 \
+     -p square "$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/SRR11566146/SRR11566146.ab" \
+     -vmin -0.75 -vmax 0.75 -c RdBu_r

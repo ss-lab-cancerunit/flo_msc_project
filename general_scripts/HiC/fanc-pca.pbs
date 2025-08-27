@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -N fanc_PCA_100kb
+#PBS -l walltime=24:00:00
+#PBS -l select=1:ncpus=8:mem=32gb
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+
+
+#activate conda environment
+source activate fanc_env
+
+
+#path to samples
+path="$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/"
+
+
+#resolution being used
+#res=10000
+res=500000
+
+#sample array
+s=(SRR11566146 SRR11566147 SRR11566148 SRR11566149 SRR11566165 SRR11566171 SRR11566172 SRR11566176 SRR11566187 SRR11566188)
+
+
+#pca name
+pca_name="ren_pca_${res}"
+
+
+#code to plot pca using fanc
+echo "samples in PCA plot include: ${s[0]} ${s[1]} ${s[2]} ${s[3]} ${s[4]} ${s[5]} ${s[6]} ${s[7]} ${s[8]} ${s[9]}"
+
+fanc pca -n "${s[0]}" "${s[1]}" "${s[2]}" "${s[3]}" "${s[4]}" "${s[5]}" "${s[6]}" "${s[7]}" "${s[8]}" "${s[9]}" \
+	-Z -s 100000 -p "${path}/${pca_name}.png" \
+	"${path}/${s[0]}/${s[0]}_${res}_fanc.hic" \
+	"${path}/${s[1]}/${s[1]}_${res}_fanc.hic" \
+	"${path}/${s[2]}/${s[2]}_${res}_fanc.hic" \
+	"${path}/${s[3]}/${s[3]}_${res}_fanc.hic" \
+	"${path}/${s[4]}/${s[4]}_${res}_fanc.hic" \
+	"${path}/${s[5]}/${s[5]}_${res}_fanc.hic" \
+	"${path}/${s[6]}/${s[6]}_${res}_fanc.hic" \
+	"${path}/${s[7]}/${s[7]}_${res}_fanc.hic" \
+	"${path}/${s[8]}/${s[8]}_${res}_fanc.hic" \
+	"${path}/${s[9]}/${s[9]}_${res}_fanc.hic" \
+	"${path}/${pca_name}.pca" 

@@ -1,0 +1,13 @@
+
+zcat panc_intraOnly_fithic_merged.txt.gz | awk '{OFS="\t"; print $1, $8, $9, $3, $10, $11, $7}' | sort -k1,1 -k2,2n -k3,3n -k4,4 -k5,5n -k6,6n | awk 'BEGIN{OFS="\t"} {
+    key=$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6
+    if (key != prev_key) {
+        if (NR > 1) print prev_key, min_fdr
+        prev_key=key
+        min_fdr=$7
+    } else {
+        if ($7 < min_fdr) min_fdr=$7
+    }
+} END {
+    print prev_key, min_fdr
+}' > panc_intraOnly_filtered.bedpe

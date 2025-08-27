@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N hic-pro-contact
+#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=64:mem=200gb
+#PBS -J 0-1
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate HiC-Pro_v3.1.0
+
+samples=(SRR11566165)
+#samples=(SRR11566146 SRR11566147 SRR11566148 SRR11566149 SRR11566165 SRR11566171 SRR11566172 SRR11566176 SRR11566187 SRR11566188)
+
+#output
+output="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[$PBS_ARRAY_INDEX]}"
+
+#config
+config="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[$PBS_ARRAY_INDEX]}/config-hicpro-${samples[$PBS_ARRAY_INDEX]}.txt"
+
+#fastq
+#input="/rds/general/user/ssamaraj/ephemeral/HiC_Flo/hic-results-SRR11566176/bowtie_results/bwt2/SRR11566176"
+inpath="$EPHEMERAL/hi-c/ren_et_al_2021/hic-pro-${samples[$PBS_ARRAY_INDEX]}/data"
+
+
+#$HOME/HiC-Pro/bin/HiC-Pro -i $input -o $output -c $config -s proc_hic -s quality_checks
+$HOME/HiC-Pro/bin/HiC-Pro -i $inpath -o $output -c $config -s build_contact_maps -s ice_norm

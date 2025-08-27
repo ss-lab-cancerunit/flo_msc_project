@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N fanc_filterloops
+#PBS -l walltime=08:00:0
+#PBS -l select=1:ncpus=32:mem=128gb
+#PBS -J 0-6
+
+#change work directory to submission directory
+cd $PBS_O_WORKDIR
+
+#loading the Conda environment:
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
+
+#activate conda environment
+source activate fanc_env
+
+#samples
+samples=(SRR11566148 SRR11566149 SRR11566170 SRR11566173 SRR11566176 SRR11566187 SRR11566188)
+
+#resolution
+res=10000
+
+#in- and outpath
+path="$EPHEMERAL/hi-c/ren_et_al_2021/fanc/fanc_hic/${samples[$PBS_ARRAY_INDEX]}"
+
+#outpath
+loops="${samples[$PBS_ARRAY_INDEX]}_${res}_fanc.loops"
+filtered_loops="${samples[$PBS_ARRAY_INDEX]}_${res}_filtered.loops"
+
+#annotate pixels for loop calling
+fanc loops "${path}"/"${loops}" \
+           "${path}"/"${filtered_loops}" \
+	   --rh-filter -d 5 -o 5 \
+	   -t 32
